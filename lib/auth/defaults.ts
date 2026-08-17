@@ -17,7 +17,7 @@ export function defaultProfileSnapshot(account: AuthUser): ProfileSnapshot {
       avatar: account.role === "admin" ? "chart-4" : "chart-1",
     },
     role: account.role,
-    verified: account.role === "admin",
+    verified: Boolean(account.emailVerified),
     onboarding: {
       basics: false,
       education: false,

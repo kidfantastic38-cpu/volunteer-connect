@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "db:migrate": "node scripts/db-migrate.mjs",
     "admin:create": "node --import ./scripts/register-ts-paths.mjs scripts/admin-create.mjs",
+    "admin:status": "node --import ./scripts/register-ts-paths.mjs scripts/admin-inspect.mjs",
     "db:seed": "node --import ./scripts/register-ts-paths.mjs scripts/db-seed.mjs",
     "db:import-sqlite": "node --import ./scripts/register-ts-paths.mjs scripts/db-import-sqlite.mjs",
     "test:security": "node scripts/security-audit.mjs",

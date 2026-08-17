@@ -1,3 +1,4 @@
+import Image from "next/image"
 import {
   ArrowRight,
   Award,
@@ -13,7 +14,7 @@ import {
 } from "lucide-react"
 import { MarketingHeader } from "@/components/marketing-header"
 import { Logo } from "@/components/logo"
-import { Chip, MatchRing, SkillBar } from "@/components/ui-bits"
+import { Chip } from "@/components/ui-bits"
 import { ButtonLink } from "@/components/button-link"
 
 const steps = [
@@ -98,28 +99,16 @@ export default function Page() {
             </div>
           </div>
           <div className="relative">
-            <div className="overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-e2 sm:p-6">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-display text-lg font-semibold">Amara Okafor</p>
-                  <p className="text-sm text-muted-foreground">Aspiring community &amp; sustainability leader</p>
-                </div>
-                <Chip tone="success">
-                  <BadgeCheck className="size-3" aria-hidden="true" /> 100% profile
-                </Chip>
-              </div>
-              <div className="space-y-3">
-                <SkillBar name="Communication" level={5} verified />
-                <SkillBar name="Leadership" level={4} verified />
-                <SkillBar name="Organization" level={4} verified />
-              </div>
-              <div className="mt-5 flex items-center gap-4 rounded-xl border border-border bg-background p-3">
-                <MatchRing value={95} size={52} />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">Sustainability Programme Assistant</p>
-                  <p className="text-xs text-muted-foreground">EarthWise Foundation · 95% match</p>
-                </div>
-              </div>
+            <div className="overflow-hidden rounded-2xl border border-border shadow-sm">
+              <Image
+                src="/hero-students.png"
+                alt="Young volunteers collaborating on a community project"
+                width={720}
+                height={560}
+                className="h-auto w-full object-cover"
+                sizes="(min-width: 768px) 50vw, 100vw"
+                priority
+              />
             </div>
             <div className="absolute -bottom-5 -left-5 hidden rounded-xl border border-border bg-card p-4 shadow-e3 sm:block">
               <div className="flex items-center gap-3">

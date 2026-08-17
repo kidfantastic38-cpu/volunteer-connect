@@ -15,6 +15,7 @@ export function loadEnvFiles() {
       if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
         value = value.slice(1, -1)
       }
+      if (key === "ADMIN_PASSWORD") continue
       if (!process.env[key]) process.env[key] = value
     }
   }

@@ -32,7 +32,7 @@ if (!email) {
   process.exit(1)
 }
 if (!password) {
-  console.error("Set ADMIN_PASSWORD in the environment, or pipe the password on stdin. It is not read from git or .env.example.")
+  console.error("Set ADMIN_PASSWORD in the environment for this command, or pipe the password on stdin. It is not read from git, .env, or .env.example.")
   process.exit(1)
 }
 
