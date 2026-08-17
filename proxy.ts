@@ -52,14 +52,14 @@ export async function proxy(request: NextRequest) {
 
   if (STUDENT_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
     if (role === "employer") return NextResponse.redirect(new URL("/employer", request.url))
-    if (role === "admin") return NextResponse.redirect(new URL("/admin", request.url))
+    if (role === "admin") return NextResponse.redirect(new URL("/admin/dashboard", request.url))
   }
 
   return NextResponse.next()
 }
 
 function homeFor(role: string) {
-  if (role === "admin") return "/admin"
+  if (role === "admin") return "/admin/dashboard"
   if (role === "employer") return "/employer"
   return "/dashboard"
 }

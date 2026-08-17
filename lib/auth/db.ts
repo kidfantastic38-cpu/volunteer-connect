@@ -17,6 +17,7 @@ function toUser(row: typeof users.$inferSelect): AuthUser {
     name: row.name,
     role: row.role as AuthRole,
     emailVerified: Boolean(row.emailVerified),
+    status: row.status || "active",
   }
 }
 

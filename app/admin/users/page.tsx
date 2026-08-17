@@ -1,178 +1,145 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { Search } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
-import { usePrototype, type AdminUser } from "@/components/prototype-store"
-import { Button } from "@/components/ui/button"
-import { Chip, ProgressBar, EmptyState } from "@/components/ui-bits"
+import { AdminConfirm, AdminError, AdminHeader, AdminLoading } from "@/components/admin-ui"
 import { Avatar } from "@/components/app-shell"
-
-type StatusFilter = "all" | AdminUser["status"]
-
-function StatusChip({ status }: { status: AdminUser["status"] }) {
-  const map = {
-    active: { tone: "success" as const, label: "Active" },
-    pending: { tone: "accent" as const, label: "Pending" },
-    suspended: { tone: "muted" as const, label: "Suspended" },
-  }
-  const { tone, label } = map[status]
-  return <Chip tone={tone}>{label}</Chip>
-}
+import { Button } from "@/components/ui/button"
+import { Chip, EmptyState } from "@/components/ui-bits"
+import { adminApi, type AdminUserRow } from "@/lib/admin/client"
 
 export default function AdminUsersPage() {
-  const { adminUsers, setUserStatus } = usePrototype()
+  const [users, setUsers] = useState<AdminUserRow[]>([])
   const [query, setQuery] = useState("")
-  const [filter, setFilter] = useState<StatusFilter>("all")
+  const [role, setRole] = useState("")
+  const [status, setStatus] = useState("")
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [pending, setPending] = useState<{ user: AdminUserRow; status: string } | null>(null)
 
-  const filtered = useMemo(
-    () =>
-      adminUsers.filter((u) => {
-        if (filter !== "all" && u.status !== filter) return false
-        if (query.trim() && !`${u.name} ${u.email}`.toLowerCase().includes(query.toLowerCase())) return false
-        return true
-      }),
-    [adminUsers, filter, query],
-  )
+  const load = () => {
+    const params = new URLSearchParams()
+    if (query.trim()) params.set("q", query.trim())
+    if (role) params.set("role", role)
+    if (status) params.set("status", status)
+    void adminApi
+      .users(params.toString() ? `?${params}` : "")
+      .then((data) => setUsers(data.users))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not load users."))
+      .finally(() => setLoading(false))
+  }
 
-  const filters: StatusFilter[] = ["all", "active", "pending", "suspended"]
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role, status])
+
+  const patch = (id: string, body: object) => {
+    setBusy(id)
+    setError("")
+    void adminApi
+      .patchUser(id, body)
+      .then(() => load())
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not update user."))
+      .finally(() => setBusy(null))
+  }
 
   return (
     <AppShell requiredRole="admin">
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold tracking-tight">User management</h1>
-        <p className="text-sm text-muted-foreground">Approve, suspend and review platform members.</p>
-      </div>
-
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative sm:max-w-xs sm:flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+      <AdminHeader title="Users" description="Search and manage accounts. Roles change only through this Admin action." />
+      <AdminError message={error} />
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && load()}
             placeholder="Search name or email"
-            aria-label="Search users"
-            className="w-full rounded-xl border border-input bg-card py-2 pl-10 pr-4 text-sm outline-none ring-ring/40 focus-visible:ring-2"
+            className="w-full rounded-xl border border-input bg-card py-2 pl-10 pr-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           />
         </div>
-        <div className="flex flex-wrap gap-2">
-          {filters.map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
-                filter === f
-                  ? "bg-primary text-primary-foreground"
-                  : "border border-border bg-card text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
+        <select value={role} onChange={(e) => setRole(e.target.value)} className="rounded-xl border border-input bg-card px-3 py-2 text-sm">
+          <option value="">All roles</option>
+          <option value="student">Student</option>
+          <option value="employer">Employer</option>
+          <option value="admin">Admin</option>
+        </select>
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-input bg-card px-3 py-2 text-sm">
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="suspended">Suspended</option>
+          <option value="deactivated">Deactivated</option>
+        </select>
+        <Button onClick={() => { setLoading(true); load() }}>Search</Button>
       </div>
-
-      {filtered.length === 0 ? (
-        <EmptyState icon={<Search className="size-6" aria-hidden="true" />} title="No users found" description="Try a different search or filter." />
+      {loading ? (
+        <AdminLoading />
+      ) : users.length === 0 ? (
+        <EmptyState icon={<Search className="size-6" />} title="No users found" description="Try a different search or filter." />
       ) : (
-        <>
-          {/* Desktop table */}
-          <div className="hidden overflow-hidden rounded-2xl border border-border bg-card md:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-4 py-3 font-medium">Member</th>
-                  <th className="px-4 py-3 font-medium">Role</th>
-                  <th className="px-4 py-3 font-medium">Joined</th>
-                  <th className="px-4 py-3 font-medium">Profile</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium text-right">Actions</th>
+        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3">Member</th>
+                <th className="px-4 py-3">Role</th>
+                <th className="px-4 py-3">Registered</th>
+                <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar name={user.name} className="size-8" />
+                      <div>
+                        <p className="font-medium">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">{user.headline || user.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 capitalize">{user.role}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{new Date(user.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3">{user.emailVerified ? <Chip tone="success">Verified</Chip> : <Chip>Unverified</Chip>}</td>
+                  <td className="px-4 py-3 capitalize">{user.status}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1.5">
+                      {user.status === "active" ? (
+                        <Button size="sm" variant="ghost" disabled={busy === user.id} onClick={() => setPending({ user, status: "suspended" })}>
+                          Suspend
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" disabled={busy === user.id} onClick={() => setPending({ user, status: "active" })}>
+                          Activate
+                        </Button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filtered.map((u) => (
-                  <tr key={u.id}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={u.name} className="size-8" />
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">{u.name}</p>
-                          <p className="truncate text-xs text-muted-foreground">{u.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 capitalize text-muted-foreground">{u.role}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{u.joined}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <ProgressBar value={u.profileStrength} className="w-16" />
-                        <span className="text-xs text-muted-foreground">{u.profileStrength}%</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusChip status={u.status} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end">
-                        <UserActions user={u} onSet={(s) => setUserStatus(u.id, s)} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile cards */}
-          <div className="space-y-3 md:hidden">
-            {filtered.map((u) => (
-              <div key={u.id} className="rounded-2xl border border-border bg-card p-4">
-                <div className="flex items-center gap-3">
-                  <Avatar name={u.name} className="size-9" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{u.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{u.email}</p>
-                  </div>
-                  <StatusChip status={u.status} />
-                </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="text-xs capitalize text-muted-foreground">
-                    {u.role} · joined {u.joined}
-                  </span>
-                  <UserActions user={u} onSet={(s) => setUserStatus(u.id, s)} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+      <AdminConfirm
+        open={!!pending}
+        title={pending?.status === "active" ? "Activate this account?" : "Suspend this account?"}
+        description="The change is stored server-side. Suspended users cannot use an existing session."
+        confirmLabel={pending?.status === "active" ? "Activate" : "Suspend"}
+        busy={!!pending && busy === pending.user.id}
+        onClose={() => setPending(null)}
+        onConfirm={() => {
+          if (!pending) return
+          patch(pending.user.id, { status: pending.status })
+          setPending(null)
+        }}
+      />
     </AppShell>
-  )
-}
-
-function UserActions({ user, onSet }: { user: AdminUser; onSet: (s: AdminUser["status"]) => void }) {
-  if (user.status === "pending") {
-    return (
-      <div className="flex gap-2">
-        <Button size="sm" onClick={() => onSet("active")}>
-          Approve
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => onSet("suspended")}>
-          Reject
-        </Button>
-      </div>
-    )
-  }
-  if (user.status === "suspended") {
-    return (
-      <Button size="sm" variant="outline" onClick={() => onSet("active")}>
-        Reactivate
-      </Button>
-    )
-  }
-  return (
-    <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => onSet("suspended")}>
-      Suspend
-    </Button>
   )
 }

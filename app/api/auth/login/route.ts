@@ -38,6 +38,9 @@ export async function POST(req: Request) {
     if (!found || !verifyPassword(password, found.passwordHash)) {
       return NextResponse.json({ error: GENERIC }, { status: 401 })
     }
+    if (found.status && found.status !== "active") {
+      return NextResponse.json({ error: GENERIC }, { status: 401 })
+    }
 
     const { passwordHash: _, ...user } = found
     let snapshot = await getProfileSnapshot(user.id)

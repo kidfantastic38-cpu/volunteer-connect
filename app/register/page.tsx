@@ -89,7 +89,8 @@ function RegisterForm() {
       .then((payload) => {
         restoreAccount(payload)
         const next = payload.user.role === "employer" ? "/employer" : "/onboarding"
-        router.push(`/verify?next=${encodeURIComponent(next)}`)
+        const mail = payload.emailSent === false ? "&mail=0" : ""
+        router.push(`/verify?next=${encodeURIComponent(next)}${mail}`)
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : "Could not create account."

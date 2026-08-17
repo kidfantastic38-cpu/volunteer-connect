@@ -94,12 +94,24 @@ export async function POST(req: Request) {
   try {
     const created = await createUser({ name, email, password, role, organization })
     await setSessionCookie(created.user)
+    let emailSent = true
     try {
       await issueEmailCode(created.user.id)
     } catch {
+      emailSent = false
       console.error("[auth] verification email was not sent")
     }
-    return NextResponse.json(await buildAuthPayload(created.user, created.snapshot))
+    const payload = await buildAuthPayload(created.user, created.snapshot)
+    return NextResponse.json({
+      ...payload,
+      emailSent,
+      ...(emailSent
+        ? {}
+        : {
+            notice:
+              "Your account was created, but we could not send the verification email. Please try resending the code.",
+          }),
+    })
   } catch (err) {
     return safeInternalError("Could not create your account.", err)
   }

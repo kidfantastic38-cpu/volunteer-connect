@@ -4,6 +4,7 @@ import type { ReactNode } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
+  BarChart3,
   Bell,
   Briefcase,
   Compass,
@@ -17,8 +18,11 @@ import {
   Settings,
   Share2,
   ShieldAlert,
+  ShieldCheck,
   Sparkles,
+  Upload,
   User,
+  UserCheck,
   Users,
 } from "lucide-react"
 import { Logo } from "@/components/logo"
@@ -56,11 +60,19 @@ const employerFooterNav = [
 ]
 
 const adminNav = [
-  { href: "/admin", label: "Overview", icon: Gauge },
-  { href: "/admin/users", label: "User Management", icon: Users },
-  { href: "/admin/employers", label: "Employer Verification", icon: Building2 },
+  { href: "/admin/dashboard", label: "Overview", icon: Gauge },
+  { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/employers", label: "Employers", icon: Building2 },
+  { href: "/admin/verifications", label: "Employer Verification", icon: UserCheck },
   { href: "/admin/opportunities", label: "Opportunities", icon: Briefcase },
-  { href: "/admin/categories", label: "Categories & Skills", icon: FolderTree },
+  { href: "/admin/applications", label: "Applications", icon: FileText },
+  { href: "/admin/skills", label: "Skills", icon: FolderTree },
+  { href: "/admin/skills/verifications", label: "Skill Verification", icon: ShieldCheck },
+  { href: "/admin/uploads", label: "Uploads / Evidence", icon: Upload },
+  { href: "/admin/portfolios", label: "Portfolios", icon: Share2 },
+  { href: "/admin/reports", label: "Reports", icon: BarChart3 },
+  { href: "/admin/notifications", label: "Notifications", icon: Bell },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
 ]
 
 const adminFooterNav: { href: string; label: string; icon: typeof Settings }[] = []
@@ -131,7 +143,7 @@ export function AppShell({
   }
 
   if (requiredRole && role !== requiredRole) {
-    const back = role === "admin" ? "/admin" : role === "employer" ? "/employer" : "/dashboard"
+    const back = role === "admin" ? "/admin/dashboard" : role === "employer" ? "/employer" : "/dashboard"
     return (
       <div className="grid min-h-screen place-items-center px-4">
         <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 text-center">
@@ -152,10 +164,19 @@ export function AppShell({
 
   const nav = role === "admin" ? adminNav : role === "employer" ? employerNav : studentNav
   const footerNav = role === "admin" ? adminFooterNav : role === "employer" ? employerFooterNav : studentFooterNav
-  const home = role === "admin" ? "/admin" : role === "employer" ? "/employer" : "/dashboard"
-  const roots = ["/dashboard", "/employer", "/admin"]
-  const isActive = (href: string) =>
-    pathname === href || (!roots.includes(href) && pathname.startsWith(`${href}/`))
+  const home = role === "admin" ? "/admin/dashboard" : role === "employer" ? "/employer" : "/dashboard"
+  const roots = ["/dashboard", "/employer", "/admin", "/admin/dashboard"]
+  const isActive = (href: string) => {
+    if (pathname === href) return true
+    if (roots.includes(href)) return false
+    const nestedMatch = nav.some(
+      (item) =>
+        item.href !== href &&
+        item.href.startsWith(`${href}/`) &&
+        (pathname === item.href || pathname.startsWith(`${item.href}/`)),
+    )
+    return !nestedMatch && pathname.startsWith(`${href}/`)
+  }
 
   const onLogout = () => {
     logout()

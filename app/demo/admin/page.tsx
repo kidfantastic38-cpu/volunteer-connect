@@ -15,13 +15,13 @@ export default function DemoAdminLaunchPage() {
   useEffect(() => {
     if (!sessionReady) return
     if (loggedIn && role === "admin") {
-      router.replace("/admin")
+      router.replace("/admin/dashboard")
       return
     }
     void apiLogin({ email: "admin@volunteerconnect.org", password: "password" })
       .then((payload) => {
         restoreAccount(payload)
-        router.replace("/admin")
+        router.replace("/admin/dashboard")
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "Could not open the admin console.")

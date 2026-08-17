@@ -15,6 +15,7 @@ export type Organization = {
   address: string
   logoUrl: string
   verificationStatus: VerificationStatus
+  suspended?: boolean
   createdAt: string
   updatedAt: string
 }

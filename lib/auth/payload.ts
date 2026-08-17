@@ -7,6 +7,8 @@ export type AuthPayload = {
   snapshot: ProfileSnapshot | null
   emailVerified: boolean
   organization: Organization | null
+  emailSent?: boolean
+  notice?: string
 }
 
 export async function buildAuthPayload(user: AuthUser, snapshot: ProfileSnapshot | null): Promise<AuthPayload> {

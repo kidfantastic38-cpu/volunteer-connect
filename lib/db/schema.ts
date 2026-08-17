@@ -19,6 +19,7 @@ export const users = pgTable("users", {
   role: text("role").notNull(),
   emailVerified: boolean("email_verified").notNull().default(false),
   sessionVersion: integer("session_version").notNull().default(1),
+  status: text("status").notNull().default("active"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 })
@@ -174,6 +175,7 @@ export const organizations = pgTable("organizations", {
   address: text("address").notNull(),
   logoUrl: text("logo_url").notNull().default(""),
   verificationStatus: text("verification_status").notNull().default("pending"),
+  suspended: boolean("suspended").notNull().default(false),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 })
@@ -295,6 +297,31 @@ export const notifications = pgTable(
   },
   (table) => [index("notifications_user_idx").on(table.userId)],
 )
+
+export const adminAuditLog = pgTable(
+  "admin_audit_log",
+  {
+    id: text("id").primaryKey(),
+    actorId: text("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    action: text("action").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id").notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("admin_audit_log_created_idx").on(table.createdAt), index("admin_audit_log_entity_idx").on(table.entityType, table.entityId)],
+)
+
+export const skillCatalog = pgTable("skill_catalog", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  category: text("category").notNull().default("General"),
+  active: boolean("active").notNull().default(true),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+})
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   profile: one(profiles, { fields: [users.id], references: [profiles.userId] }),

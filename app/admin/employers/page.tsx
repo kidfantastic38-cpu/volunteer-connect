@@ -1,131 +1,92 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Building2, Loader2 } from "lucide-react"
+import { Building2 } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
+import { AdminConfirm, AdminError, AdminHeader, AdminLoading } from "@/components/admin-ui"
 import { OrgTrustBadge } from "@/components/org-badge"
+import { Modal } from "@/components/modal"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui-bits"
-import { Modal } from "@/components/modal"
-import { Textarea } from "@/components/form-controls"
-import { apiListVerifications, apiReviewVerification } from "@/lib/auth/client"
-import type { VerificationListItem, VerificationStatus } from "@/lib/org/types"
+import { adminApi, type AdminEmployerRow, type AdminVerificationHistory } from "@/lib/admin/client"
 
 export default function AdminEmployersPage() {
-  const [requests, setRequests] = useState<VerificationListItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const [rows, setRows] = useState<AdminEmployerRow[]>([])
   const [error, setError] = useState("")
-  const [busyId, setBusyId] = useState<string | null>(null)
-  const [moreInfo, setMoreInfo] = useState<VerificationListItem | null>(null)
-  const [notes, setNotes] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [detail, setDetail] = useState<AdminEmployerRow | null>(null)
+  const [history, setHistory] = useState<AdminVerificationHistory[]>([])
+  const [pending, setPending] = useState<AdminEmployerRow | null>(null)
+
+  const load = () => {
+    void adminApi
+      .employers()
+      .then((data) => setRows(data.employers))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not load employers."))
+      .finally(() => setLoading(false))
+  }
 
   useEffect(() => {
-    void apiListVerifications()
-      .then(setRequests)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not load requests."))
-      .finally(() => setLoading(false))
+    load()
   }, [])
 
-  const review = (item: VerificationListItem, status: VerificationStatus, reviewNotes?: string) => {
-    setBusyId(item.organizationId)
-    setError("")
-    void apiReviewVerification({ organizationId: item.organizationId, status, notes: reviewNotes })
-      .then(setRequests)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not update verification."))
-      .finally(() => {
-        setBusyId(null)
-        setMoreInfo(null)
-        setNotes("")
+  const openDetail = (row: AdminEmployerRow) => {
+    setDetail(row)
+    setHistory([])
+    void adminApi
+      .employer(row.id)
+      .then((data) => {
+        setDetail(data.employer)
+        setHistory(data.history)
       })
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not load organization."))
   }
 
   return (
     <AppShell requiredRole="admin">
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold tracking-tight">Employer verification</h1>
-        <p className="text-sm text-muted-foreground">
-          Approve organizations before they can post opportunities or receive applications.
-        </p>
-      </div>
-
-      {error ? (
-        <p className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
-          {error}
-        </p>
-      ) : null}
-
+      <AdminHeader title="Employers" description="Organizations, owners, and verification status." />
+      <AdminError message={error} />
       {loading ? (
-        <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Loading verification requests…
-        </p>
-      ) : requests.length === 0 ? (
-        <EmptyState
-          icon={<Building2 className="size-6" aria-hidden="true" />}
-          title="No employer requests"
-          description="New employer registrations will appear here for review."
-        />
+        <AdminLoading />
+      ) : rows.length === 0 ? (
+        <EmptyState icon={<Building2 className="size-6" />} title="No employers yet" description="Employer registrations will appear here." />
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-border bg-card">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full min-w-[800px] text-left text-sm">
             <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-4 py-3 font-medium">Organization</th>
-                <th className="px-4 py-3 font-medium">Owner</th>
-                <th className="px-4 py-3 font-medium">Email</th>
-                <th className="px-4 py-3 font-medium">Website</th>
-                <th className="px-4 py-3 font-medium">Registration</th>
-                <th className="px-4 py-3 font-medium">Submitted</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Actions</th>
+                <th className="px-4 py-3">Organization</th>
+                <th className="px-4 py-3">Owner</th>
+                <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Registered</th>
+                <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {requests.map((item) => (
-                <tr key={item.requestId}>
-                  <td className="px-4 py-3 font-medium">{item.organizationName}</td>
-                  <td className="px-4 py-3">{item.ownerName}</td>
-                  <td className="px-4 py-3">{item.organizationEmail || item.ownerEmail}</td>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td className="px-4 py-3 font-medium">{row.name}</td>
                   <td className="px-4 py-3">
-                    {item.website ? (
-                      <a href={item.website} className="text-primary hover:underline" target="_blank" rel="noreferrer">
-                        {item.website.replace(/^https?:\/\//, "")}
-                      </a>
-                    ) : (
-                      "—"
-                    )}
+                    {row.ownerName}
+                    <p className="text-xs text-muted-foreground">{row.ownerEmail}</p>
                   </td>
-                  <td className="px-4 py-3">{item.registrationNumber || "—"}</td>
-                  <td className="px-4 py-3">{new Date(item.submittedAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3">{row.organizationType}</td>
+                  <td className="px-4 py-3">{row.organizationEmail}</td>
                   <td className="px-4 py-3">
-                    <OrgTrustBadge status={item.status} />
+                    <OrgTrustBadge status={row.verificationStatus as "pending" | "approved" | "rejected" | "more_info"} />
+                    {row.suspended ? <p className="text-xs text-destructive">Suspended</p> : null}
                   </td>
+                  <td className="px-4 py-3">{new Date(row.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1.5">
-                      <Button
-                        size="sm"
-                        disabled={busyId === item.organizationId || item.status === "approved"}
-                        onClick={() => review(item, "approved")}
-                      >
-                        Approve
+                      <Button size="sm" variant="outline" onClick={() => openDetail(row)}>
+                        View
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busyId === item.organizationId || item.status === "rejected"}
-                        onClick={() => review(item, "rejected")}
-                      >
-                        Reject
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={busyId === item.organizationId}
-                        onClick={() => {
-                          setMoreInfo(item)
-                          setNotes(item.notes)
-                        }}
-                      >
-                        Request more information
+                      <Button size="sm" variant={row.suspended ? "outline" : "ghost"} disabled={busy === row.id} onClick={() => setPending(row)}>
+                        {row.suspended ? "Unsuspend" : "Suspend"}
                       </Button>
                     </div>
                   </td>
@@ -135,30 +96,67 @@ export default function AdminEmployersPage() {
           </table>
         </div>
       )}
-
-      <Modal
-        open={!!moreInfo}
-        onClose={() => setMoreInfo(null)}
-        title="Request more information"
-        description={moreInfo ? `Ask ${moreInfo.organizationName} for extra details.` : ""}
-      >
-        <Textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="What should the employer provide?"
-        />
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setMoreInfo(null)}>
-            Cancel
-          </Button>
-          <Button
-            disabled={!moreInfo}
-            onClick={() => moreInfo && review(moreInfo, "more_info", notes)}
-          >
-            Send request
-          </Button>
-        </div>
+      <Modal open={!!detail} onClose={() => setDetail(null)} title={detail?.name || "Organization"}>
+        {detail ? (
+          <div className="space-y-3 text-sm">
+            <p>
+              <span className="text-muted-foreground">Owner:</span> {detail.ownerName} ({detail.ownerEmail})
+            </p>
+            <p>
+              <span className="text-muted-foreground">Type:</span> {detail.organizationType}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Email:</span> {detail.organizationEmail}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Phone:</span> {detail.phone || "—"}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Website:</span> {detail.website || "—"}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Registration no.:</span> {detail.registrationNumber || "—"}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Address:</span> {detail.address || "—"}
+            </p>
+            <h3 className="pt-2 font-medium">Verification history</h3>
+            {history.length === 0 ? (
+              <p className="text-muted-foreground">No verification records.</p>
+            ) : (
+              <ul className="space-y-2">
+                {history.map((item) => (
+                  <li key={item.id} className="rounded-lg border border-border px-3 py-2">
+                    <p className="capitalize">{item.status.replace("_", " ")}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(item.submittedAt).toLocaleString()}</p>
+                    {item.notes ? <p className="mt-1">{item.notes}</p> : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : null}
       </Modal>
+      <AdminConfirm
+        open={!!pending}
+        title={pending?.suspended ? "Unsuspend organization?" : "Suspend organization?"}
+        description="This does not delete the organization or its listings. Suspended employers cannot post until restored."
+        confirmLabel={pending?.suspended ? "Unsuspend" : "Suspend"}
+        busy={!!pending && busy === pending.id}
+        onClose={() => setPending(null)}
+        onConfirm={() => {
+          if (!pending) return
+          setBusy(pending.id)
+          void adminApi
+            .patchEmployer(pending.id, { suspended: !pending.suspended })
+            .then(() => {
+              setPending(null)
+              load()
+            })
+            .catch((err: unknown) => setError(err instanceof Error ? err.message : "Update failed."))
+            .finally(() => setBusy(null))
+        }}
+      />
     </AppShell>
   )
 }

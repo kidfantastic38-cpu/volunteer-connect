@@ -31,6 +31,7 @@ function toOrg(row: typeof organizations.$inferSelect): Organization {
     address: row.address,
     logoUrl: safeHttpUrl(row.logoUrl),
     verificationStatus: row.verificationStatus as VerificationStatus,
+    suspended: Boolean(row.suspended),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }

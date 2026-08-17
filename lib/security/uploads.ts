@@ -19,7 +19,7 @@ export type StoredUpload = {
   storagePath: string
 }
 
-function blobStorageEnabled() {
+export function blobStorageEnabled() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN)
 }
 

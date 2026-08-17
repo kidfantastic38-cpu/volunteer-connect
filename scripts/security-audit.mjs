@@ -2,17 +2,37 @@
  * Targeted security checks for Volunteer Connect.
  * Usage: node scripts/security-audit.mjs
  * Optional: BASE_URL=http://localhost:3000
+ *
+ * Each run uses namespace security-test-<runId>. Demo accounts are never deleted.
+ * Blob-dependent checks are marked NOT RUN when production Blob storage is unset.
  */
+import postgres from "postgres"
 import { detectFileKind, validateUpload } from "../lib/security/files.ts"
 import { safeHttpUrl } from "../lib/security/urls.ts"
+import { loadEnvFiles } from "./load-env.mjs"
+
+loadEnvFiles()
 
 const BASE = process.env.BASE_URL || "http://127.0.0.1:3000"
 const results = []
 
-function record(name, ok, detail = "") {
-  results.push({ name, ok, detail })
-  const mark = ok ? "PASS" : "FAIL"
-  console.log(`${mark}  ${name}${detail ? ` — ${detail}` : ""}`)
+const PROTECTED_EMAILS = new Set(["amara@example.com", "admin@volunteerconnect.org", "hello@earthwise.org"])
+const PROTECTED_IDS = new Set(["user-amara", "user-admin", "user-earthwise"])
+
+const AUDIT_EMAIL_PATTERNS = [
+  /^security-test-(student|student-b|employer|employer-b|reject)-\d+@example\.test$/i,
+  /^vc-audit-\d+-(student|student-b|employer|employer-b|reject)@example\.com$/i,
+  /^audit-(student|student-b|employer|employer-b|reject)-\d+@example\.com$/i,
+]
+
+function record(name, ok, detail = "", status = "") {
+  const state = status || (ok ? "PASS" : "FAIL")
+  results.push({ name, ok: state === "PASS", skipped: state === "NOT RUN", status: state, detail })
+  console.log(`${state}  ${name}${detail ? ` — ${detail}` : ""}`)
+}
+
+function skip(name, detail) {
+  record(name, false, detail, "NOT RUN")
 }
 
 function cookieFrom(res) {
@@ -30,8 +50,12 @@ async function json(res) {
   }
 }
 
+let auditForwardedIp = "203.0.113.1"
+
 async function req(path, init = {}) {
-  return fetch(`${BASE}${path}`, { redirect: "manual", ...init })
+  const headers = new Headers(init.headers || {})
+  if (!headers.has("x-forwarded-for")) headers.set("x-forwarded-for", auditForwardedIp)
+  return fetch(`${BASE}${path}`, { redirect: "manual", ...init, headers })
 }
 
 function jpegBytes() {
@@ -40,6 +64,87 @@ function jpegBytes() {
 
 function pdfBytes() {
   return new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a, 0x25, 0xc7, 0xec])
+}
+
+function isAuditTestEmail(email) {
+  return AUDIT_EMAIL_PATTERNS.some((pattern) => pattern.test(String(email || "")))
+}
+
+function isProtectedAccount(row) {
+  return PROTECTED_EMAILS.has(String(row.email || "").toLowerCase()) || PROTECTED_IDS.has(String(row.id || ""))
+}
+
+async function cleanupAuditUsers(reason) {
+  const url = process.env.DATABASE_URL?.trim()
+  if (!url) {
+    console.log(`Skipping DB cleanup (${reason}): DATABASE_URL is not set`)
+    return 0
+  }
+  const sql = postgres(url, { max: 1, prepare: false })
+  try {
+    const rows = await sql`
+      SELECT id, email
+      FROM users
+      WHERE email LIKE 'security-test-%@example.test'
+         OR email LIKE 'vc-audit-%@example.com'
+         OR email LIKE 'audit-student-%@example.com'
+         OR email LIKE 'audit-employer-%@example.com'
+         OR email LIKE 'audit-reject-%@example.com'
+    `
+    const targets = rows.filter((row) => isAuditTestEmail(row.email) && !isProtectedAccount(row))
+    if (!targets.length) {
+      console.log(`No audit users to clean (${reason})`)
+      return 0
+    }
+    const ids = targets.map((row) => row.id)
+    await sql`DELETE FROM users WHERE id = ANY(${ids}) AND id <> ALL(${[...PROTECTED_IDS]})`
+    console.log(`Cleaned ${ids.length} audit user(s) (${reason})`)
+    return ids.length
+  } finally {
+    await sql.end({ timeout: 5 })
+  }
+}
+
+function studentSnapshot(input) {
+  return {
+    user: {
+      name: "Audit Student",
+      email: input.spoofEmail ?? "spoof@evil.test",
+      headline: "",
+      location: "",
+      about: "",
+      interests: [],
+      avatar: "chart-1",
+    },
+    role: "admin",
+    verified: true,
+    onboarding: {
+      basics: true,
+      education: false,
+      experience: false,
+      projects: false,
+      achievements: false,
+      skills: true,
+    },
+    education: [],
+    experiences: input.experiences ?? [],
+    projects: [],
+    achievements: [],
+    skills: input.skills,
+    applications: input.applications ?? [],
+    notifications: [],
+    portfolio: {
+      published: input.published ?? false,
+      theme: "aurora",
+      slug: input.slug,
+      visibility: input.visibility ?? "private",
+      showContact: false,
+      showEvidence: input.showEvidence ?? false,
+      tagline: input.tagline ?? "",
+    },
+    privacy: {},
+    cvTemplate: "modern",
+  }
 }
 
 async function unitTests() {
@@ -57,11 +162,67 @@ async function unitTests() {
 }
 
 async function httpTests() {
-  const stamp = Date.now()
-  const studentEmail = `audit-student-${stamp}@example.com`
-  const employerEmail = `audit-employer-${stamp}@example.com`
+  const runId = String(Date.now())
+  const ns = `security-test-${runId}`
+  const id = (kind) => `${ns}-${kind}`.slice(0, 64)
+  auditForwardedIp = `203.0.113.${(Number(runId.slice(-8)) % 250) + 1}`
+  console.log(`Audit namespace: ${ns} (test-created data only; demo accounts are untouched)`)
+
+  const studentEmail = `security-test-student-${runId}@example.test`
+  const employerEmail = `security-test-employer-${runId}@example.test`
   const studentPass = "student-pass-1"
   const employerPass = "employer-pass-1"
+  const skillId = id("sk-lead")
+  const expHackId = id("exp-hack")
+  const expLabelId = id("exp-label")
+  const expEvidenceId = id("exp-file")
+  const evLabelId = id("ev-label")
+  const evFileId = id("ev-file")
+  const publicSlug = `${ns}-public`.toLowerCase()
+  const unlistedSlug = `${ns}-unlisted`.toLowerCase()
+
+  await cleanupAuditUsers("before-run")
+
+  try {
+    await runHttpTests({
+      ns,
+      id,
+      studentEmail,
+      employerEmail,
+      studentPass,
+      employerPass,
+      skillId,
+      expHackId,
+      expLabelId,
+      expEvidenceId,
+      evLabelId,
+      evFileId,
+      publicSlug,
+      unlistedSlug,
+      runId,
+    })
+  } finally {
+    await cleanupAuditUsers("after-run")
+  }
+}
+
+async function runHttpTests(ctx) {
+  const {
+    studentEmail,
+    employerEmail,
+    studentPass,
+    employerPass,
+    skillId,
+    expHackId,
+    expLabelId,
+    expEvidenceId,
+    evLabelId,
+    evFileId,
+    publicSlug,
+    unlistedSlug,
+    runId,
+    id,
+  } = ctx
 
   const health = await req("/login")
   if (health.status >= 500) {
@@ -89,26 +250,15 @@ async function httpTests() {
     method: "PUT",
     headers: { "Content-Type": "application/json", cookie: studentCookie },
     body: JSON.stringify({
-      snapshot: {
-        user: { name: "Audit Student", email: "spoof@evil.test", headline: "", location: "", about: "", interests: [], avatar: "chart-1" },
-        role: "admin",
-        verified: true,
-        onboarding: { basics: true, education: false, experience: false, projects: false, achievements: false, skills: true },
-        education: [],
-        experiences: [],
-        projects: [],
-        achievements: [],
-        skills: [{ id: "sk-fake", name: "Leadership", level: 5, category: "Leadership", source: "Self", verified: true }],
-        applications: [],
-        notifications: [],
-        portfolio: { published: false, theme: "aurora", slug: `audit-student-${stamp}`, visibility: "private", showContact: false, showEvidence: false, tagline: "" },
-        privacy: {},
-        cvTemplate: "modern",
-      },
+      snapshot: studentSnapshot({
+        spoofEmail: "spoof@evil.test",
+        slug: publicSlug,
+        skills: [{ id: skillId, name: "Leadership", level: 5, category: "Leadership", source: "Self", verified: true }],
+      }),
     }),
   })
   const escalateBody = await json(escalate)
-  record("profile save ignores client role/admin", escalate.ok && escalateBody.snapshot?.role === "student")
+  record("profile save ignores client role/admin", escalate.ok && escalateBody.snapshot?.role === "student", escalate.ok ? "" : `status ${escalate.status}`)
   record("profile save ignores client verified email flag", escalateBody.snapshot?.verified === false)
   record("profile save ignores client skill.verified", escalateBody.snapshot?.skills?.[0]?.verified === false)
   record("profile save keeps server email", escalateBody.snapshot?.user?.email === studentEmail)
@@ -117,22 +267,12 @@ async function httpTests() {
     method: "PUT",
     headers: { "Content-Type": "application/json", cookie: studentCookie },
     body: JSON.stringify({
-      snapshot: {
-        user: { name: "Hacked", email: "amara@example.com", headline: "", location: "", about: "", interests: [], avatar: "chart-1" },
-        role: "student",
-        verified: true,
-        onboarding: { basics: true, education: true, experience: true, projects: true, achievements: true, skills: true },
-        education: [],
-        experiences: [{ id: "exp-hack", type: "work", role: "Hacked", organization: "Nope", location: "", start: "", end: "", current: false, description: "", skills: [], evidence: [] }],
-        projects: [],
-        achievements: [],
+      snapshot: studentSnapshot({
+        spoofEmail: "amara@example.com",
+        slug: "amara-okafor",
         skills: [],
-        applications: [],
-        notifications: [],
-        portfolio: { published: false, theme: "aurora", slug: "amara-okafor", visibility: "private", showContact: false, showEvidence: false, tagline: "" },
-        privacy: {},
-        cvTemplate: "modern",
-      },
+        experiences: [{ id: expHackId, type: "work", role: "Hacked", organization: "Nope", location: "", start: "", end: "", current: false, description: "", skills: [], evidence: [] }],
+      }),
     }),
   })
   const otherBody = await json(otherProfile)
@@ -146,7 +286,7 @@ async function httpTests() {
   const amaraBody = await json(amaraLogin)
   const amaraCookie = cookieFrom(amaraLogin)
   record("existing student still logs in", amaraLogin.ok && amaraBody.user?.email === "amara@example.com")
-  record("amara experience was not overwritten", !(amaraBody.snapshot?.experiences ?? []).some((item) => item.id === "exp-hack"))
+  record("amara experience was not overwritten", !(amaraBody.snapshot?.experiences ?? []).some((item) => item.id === expHackId))
 
   const sqli = await req("/api/auth/login", {
     method: "POST",
@@ -164,7 +304,7 @@ async function httpTests() {
       password: employerPass,
       role: "employer",
       organization: {
-        name: `Audit Org ${stamp}`,
+        name: `Audit Org ${runId}`,
         organizationType: "NGO",
         organizationEmail: employerEmail,
         phone: "+441610000000",
@@ -196,6 +336,51 @@ async function httpTests() {
   })
   record("employer cannot approve itself", selfApprove.status === 403)
 
+  const studentApprove = await req("/api/admin/verifications", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", cookie: studentCookie },
+    body: JSON.stringify({ organizationId: employerBody.organization?.id, status: "approved" }),
+  })
+  record("student cannot approve employer", studentApprove.status === 403)
+
+  const studentAdminPage = await req("/admin/dashboard", { headers: { cookie: studentCookie } })
+  const studentAdminLoc = studentAdminPage.headers.get("location") || ""
+  record(
+    "student cannot access /admin/dashboard",
+    studentAdminPage.status === 307 || studentAdminPage.status === 302,
+    `status ${studentAdminPage.status}`,
+  )
+  record("student admin redirect goes to student home", studentAdminLoc.includes("/dashboard") && !studentAdminLoc.includes("/admin/dashboard"))
+
+  const employerAdminPage = await req("/admin/dashboard", { headers: { cookie: employerCookie } })
+  const employerAdminLoc = employerAdminPage.headers.get("location") || ""
+  record(
+    "employer cannot access /admin/dashboard",
+    employerAdminPage.status === 307 || employerAdminPage.status === 302,
+    `status ${employerAdminPage.status}`,
+  )
+  record("employer admin redirect goes to employer home", employerAdminLoc.includes("/employer") && !employerAdminLoc.includes("/admin"))
+
+  const studentAdminApi = await req("/api/admin/stats", { headers: { cookie: studentCookie } })
+  record("student cannot call Admin APIs", studentAdminApi.status === 403)
+
+  const employerAdminApi = await req("/api/admin/users", { headers: { cookie: employerCookie } })
+  record("employer cannot call Admin APIs", employerAdminApi.status === 403)
+
+  const studentUserPatch = await req(`/api/admin/users/${studentBody.user?.id || "missing"}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", cookie: studentCookie },
+    body: JSON.stringify({ status: "suspended" }),
+  })
+  record("student cannot call Admin user-management APIs", studentUserPatch.status === 403)
+
+  const employerUserPatch = await req(`/api/admin/users/${studentBody.user?.id || "missing"}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", cookie: employerCookie },
+    body: JSON.stringify({ status: "suspended" }),
+  })
+  record("employer cannot call Admin user-management APIs", employerUserPatch.status === 403)
+
   const orgPut = await req("/api/org", {
     method: "PUT",
     headers: { "Content-Type": "application/json", cookie: employerCookie },
@@ -213,6 +398,51 @@ async function httpTests() {
   const adminCookie = cookieFrom(adminLogin)
   record("admin can sign in", adminLogin.ok && adminBody.user?.role === "admin")
 
+  const settingsBody = await json(await req("/api/admin/settings", { headers: { cookie: adminCookie } }))
+  const blobConfigured = Boolean(settingsBody.settings?.blobConfigured)
+
+  const adminDash = await req("/admin/dashboard", { headers: { cookie: adminCookie } })
+  record("admin can access Admin Dashboard", adminDash.status === 200, `status ${adminDash.status}`)
+
+  const adminUsers = await req("/api/admin/users", { headers: { cookie: adminCookie } })
+  const adminUsersBody = await json(adminUsers)
+  const adminUsersJson = JSON.stringify(adminUsersBody)
+  record(
+    "admin can view users",
+    adminUsers.ok && Array.isArray(adminUsersBody.users) && adminUsersBody.users.some((item) => item.email === studentEmail),
+  )
+  record(
+    "admin user list omits secrets",
+    !adminUsersJson.includes("passwordHash") && !adminUsersJson.includes("password_hash") && !adminUsersJson.includes("vc_session"),
+  )
+
+  const rejectEmail = `security-test-reject-${runId}@example.test`
+  const rejectReg = await req("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: "Reject Employer",
+      email: rejectEmail,
+      password: employerPass,
+      role: "employer",
+      organization: {
+        name: `Reject Org ${runId}`,
+        organizationType: "NGO",
+        organizationEmail: rejectEmail,
+        phone: "+441610000002",
+        address: "Bristol, UK",
+      },
+    }),
+  })
+  const rejectRegBody = await json(rejectReg)
+  const rejectRes = await req("/api/admin/verifications", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", cookie: adminCookie },
+    body: JSON.stringify({ organizationId: rejectRegBody.organization?.id, status: "rejected" }),
+  })
+  const rejectBody = await json(rejectRes)
+  record("admin can reject employer", rejectRes.ok && rejectBody.organization?.verificationStatus === "rejected")
+
   const approve = await req("/api/admin/verifications", {
     method: "POST",
     headers: { "Content-Type": "application/json", cookie: adminCookie },
@@ -224,11 +454,36 @@ async function httpTests() {
   const publishOk = await req("/api/employer/opportunities", {
     method: "POST",
     headers: { "Content-Type": "application/json", cookie: employerCookie },
-    body: JSON.stringify({ title: "Community Garden Lead", description: "Help run a weekend garden programme." }),
+    body: JSON.stringify({ title: `Community Garden Lead ${runId}`, description: "Help run a weekend garden programme." }),
   })
   const publishedOpp = await json(publishOk)
   record("verified employer can publish", publishOk.ok)
   const opportunityId = publishedOpp.opportunity?.id
+
+  const moderateCreate = await req("/api/employer/opportunities", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", cookie: employerCookie },
+    body: JSON.stringify({ title: `Admin moderate ${runId}`, description: "Moderation target listing." }),
+  })
+  const moderateCreated = await json(moderateCreate)
+  const moderateId = moderateCreated.opportunity?.id
+  const moderateRes = await req(`/api/admin/opportunities/${moderateId || "missing"}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", cookie: adminCookie },
+    body: JSON.stringify({ status: "closed" }),
+  })
+  const moderateResBody = await json(moderateRes)
+  record("admin can moderate opportunities", moderateRes.ok && moderateResBody.opportunity?.status === "closed")
+  record(
+    "admin moderation does not change opportunity ownership",
+    moderateRes.ok && moderateResBody.opportunity?.organizationId === employerBody.organization?.id,
+  )
+  const studentModerate = await req(`/api/admin/opportunities/${moderateId || "missing"}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", cookie: studentCookie },
+    body: JSON.stringify({ status: "archived" }),
+  })
+  record("student cannot moderate opportunities via Admin API", studentModerate.status === 403)
 
   const studentCreateOpp = await req("/api/opportunities", {
     method: "POST",
@@ -237,7 +492,7 @@ async function httpTests() {
   })
   record("student cannot create opportunity", studentCreateOpp.status === 403)
 
-  const otherEmployerEmail = `audit-employer-b-${stamp}@example.com`
+  const otherEmployerEmail = `security-test-employer-b-${runId}@example.test`
   const otherEmployerReg = await req("/api/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -247,7 +502,7 @@ async function httpTests() {
       password: employerPass,
       role: "employer",
       organization: {
-        name: `Other Org ${stamp}`,
+        name: `Other Org ${runId}`,
         organizationType: "NGO",
         organizationEmail: otherEmployerEmail,
         phone: "+441610000001",
@@ -277,6 +532,25 @@ async function httpTests() {
   const applyBody = await json(applyOk)
   record("valid application succeeds", applyOk.ok && applyBody.application?.id, `status ${applyOk.status}`)
 
+  const adminApps = await req("/api/admin/applications", { headers: { cookie: adminCookie } })
+  const adminAppsBody = await json(adminApps)
+  const adminAppsJson = JSON.stringify(adminAppsBody)
+  record(
+    "admin can view authorized application information",
+    adminApps.ok && (adminAppsBody.applications ?? []).some((item) => item.id === applyBody.application?.id),
+  )
+  record(
+    "admin application payload omits secrets",
+    !adminAppsJson.toLowerCase().includes("password") && !adminAppsJson.includes("token") && !adminAppsJson.includes("otp"),
+  )
+  const adminOpps = await json(await req("/api/admin/opportunities", { headers: { cookie: adminCookie } }))
+  const garden = (adminOpps.opportunities ?? []).find((item) => item.id === opportunityId)
+  const closedTarget = (adminOpps.opportunities ?? []).find((item) => item.id === moderateId)
+  record(
+    "admin actions do not modify unrelated records",
+    garden?.status === "published" && closedTarget?.status === "closed",
+  )
+
   const applyDup = await req("/api/applications", {
     method: "POST",
     headers: { "Content-Type": "application/json", cookie: studentCookie },
@@ -288,7 +562,7 @@ async function httpTests() {
     method: "POST",
     headers: { "Content-Type": "application/json", cookie: employerCookie },
     body: JSON.stringify({
-      title: "Expired role",
+      title: `Expired role ${runId}`,
       description: "This deadline has passed.",
       deadline: "2020-01-01",
     }),
@@ -301,7 +575,7 @@ async function httpTests() {
   })
   record("expired opportunity rejected", applyExpired.status === 400)
 
-  const otherStudentEmail = `audit-student-b-${stamp}@example.com`
+  const otherStudentEmail = `security-test-student-b-${runId}@example.test`
   const otherStudentReg = await req("/api/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -312,10 +586,29 @@ async function httpTests() {
       role: "student",
     }),
   })
-  const otherStudentCookie = cookieFrom(otherStudentReg)
+  const otherStudentBody = await json(otherStudentReg)
+  const otherStudentId = otherStudentBody.user?.id
+  const statusPatch = await req(`/api/admin/users/${otherStudentId || "missing"}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", cookie: adminCookie },
+    body: JSON.stringify({ status: "suspended" }),
+  })
+  const statusPatchBody = await json(statusPatch)
+  record("admin can update supported account status", statusPatch.ok && statusPatchBody.user?.status === "suspended")
+  await req(`/api/admin/users/${otherStudentId || "missing"}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", cookie: adminCookie },
+    body: JSON.stringify({ status: "active" }),
+  })
+  const otherStudentLogin = await req("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: otherStudentEmail, password: studentPass }),
+  })
+  const otherStudentFreshCookie = cookieFrom(otherStudentLogin)
   const stealApp = await req(`/api/applications/${applyBody.application?.id || "missing"}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", cookie: otherStudentCookie },
+    headers: { "Content-Type": "application/json", cookie: otherStudentFreshCookie },
     body: JSON.stringify({ status: "withdrawn" }),
   })
   record("student cannot modify another student's application", stealApp.status === 404)
@@ -343,7 +636,7 @@ async function httpTests() {
   const draftOk = await req("/api/employer/opportunities", {
     method: "POST",
     headers: { "Content-Type": "application/json", cookie: employerCookie },
-    body: JSON.stringify({ title: "Draft only", description: "Not public yet.", status: "draft" }),
+    body: JSON.stringify({ title: `Draft only ${runId}`, description: "Not public yet.", status: "draft" }),
   })
   const draftBody = await json(draftOk)
   record("verified employer can create a draft", draftOk.ok && draftBody.opportunity?.status === "draft")
@@ -358,13 +651,13 @@ async function httpTests() {
   const closedOpp = await req("/api/employer/opportunities", {
     method: "POST",
     headers: { "Content-Type": "application/json", cookie: employerCookie },
-    body: JSON.stringify({ title: "Closed role", description: "No longer accepting.", status: "published" }),
+    body: JSON.stringify({ title: `Closed role ${runId}`, description: "No longer accepting.", status: "published" }),
   })
   const closedBody = await json(closedOpp)
   await req(`/api/employer/opportunities/${closedBody.opportunity?.id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", cookie: employerCookie },
-    body: JSON.stringify({ title: "Closed role", description: "No longer accepting.", status: "closed" }),
+    body: JSON.stringify({ title: `Closed role ${runId}`, description: "No longer accepting.", status: "closed" }),
   })
   const applyClosed = await req("/api/applications", {
     method: "POST",
@@ -406,10 +699,10 @@ async function httpTests() {
   const employerStatusBody = await json(employerStatus)
   record(
     "employer can update status for its own application records",
-    employerStatus.ok && (employerStatusBody.application?.status === "shortlisted"),
+    employerStatus.ok && employerStatusBody.application?.status === "shortlisted",
   )
 
-  const randomApp = await req("/api/applications/00000000-0000-4000-8000-000000000000", { headers: { cookie: otherStudentCookie } })
+  const randomApp = await req("/api/applications/00000000-0000-4000-8000-000000000000", { headers: { cookie: otherStudentFreshCookie } })
   record("random application ID cannot expose another student's application", randomApp.status === 404)
 
   const otherEmployerPut = await req(`/api/employer/opportunities/${opportunityId || "missing"}`, {
@@ -426,12 +719,31 @@ async function httpTests() {
   })
   record("student cannot officially verify a skill", studentSkill.status === 403)
 
-  const fakeJpeg = new File([jpegBytes()], "photo.jpg", { type: "image/jpeg" })
+  const employerSkill = await req("/api/admin/skills", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", cookie: employerCookie },
+    body: JSON.stringify({ userId: studentBody.user?.id, skillName: "Leadership", verified: true }),
+  })
+  record("employer cannot officially verify a skill", employerSkill.status === 403)
+
+  const adminSkill = await req("/api/admin/skills", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", cookie: adminCookie },
+    body: JSON.stringify({ userId: studentBody.user?.id, skillName: "Leadership", verified: true }),
+  })
+  record("admin can verify skill", adminSkill.ok)
+
+  const fakeJpeg = new File([jpegBytes()], `${id("photo")}.jpg`, { type: "image/jpeg" })
   const formOk = new FormData()
   formOk.append("file", fakeJpeg)
   const uploadOk = await req("/api/uploads", { method: "POST", headers: { cookie: studentCookie }, body: formOk })
   const uploadBody = await json(uploadOk)
-  record("allowed jpeg upload accepted", uploadOk.ok)
+  const blobUnavailable = !uploadOk.ok && !blobConfigured
+  if (blobUnavailable) {
+    skip("allowed jpeg upload accepted", "NOT RUN — production Blob storage not configured")
+  } else {
+    record("allowed jpeg upload accepted", uploadOk.ok, uploadOk.ok ? "" : `status ${uploadOk.status}`)
+  }
   const stealUpload = await req(`/api/uploads/${uploadBody.upload?.id ?? "missing"}`, { headers: { cookie: amaraCookie } })
   record("student cannot read another student's upload", stealUpload.status === 404)
 
@@ -457,38 +769,54 @@ async function httpTests() {
   const uploadHuge = await req("/api/uploads", { method: "POST", headers: { cookie: studentCookie }, body: formHuge })
   record("oversized upload rejected by API", uploadHuge.status === 400)
 
+  const ownedUploadId = uploadOk.ok ? uploadBody.upload?.id : undefined
+  const evidenceSkills = [{ id: skillId, name: "Leadership", level: 5, category: "Leadership", source: "Self", verified: true }]
+  const evidenceExperiences = [
+    {
+      id: expLabelId,
+      type: "volunteer",
+      role: "Volunteer",
+      organization: "Label Only",
+      location: "",
+      start: "2024-01",
+      end: "",
+      current: true,
+      description: "Labels are not evidence.",
+      skills: ["Leadership"],
+      evidence: [{ id: evLabelId, type: "certificate", label: "I say this is verified", status: "verified" }],
+    },
+  ]
+  if (ownedUploadId) {
+    evidenceSkills.push({ id: id("sk-comm"), name: "Communication", level: 3, category: "Communication", source: "Self", verified: false })
+    evidenceExperiences.push({
+      id: expEvidenceId,
+      type: "volunteer",
+      role: "Documented volunteer",
+      organization: "Evidence Org",
+      location: "",
+      start: "2024-01",
+      end: "",
+      current: true,
+      description: "This experience is tied to a real upload from this run.",
+      skills: ["Communication"],
+      evidence: [{ id: evFileId, type: "photo", label: "Photo evidence", uploadId: ownedUploadId, status: "pending" }],
+    })
+  }
+
   const publishPortfolio = await req("/api/auth/profile", {
     method: "PUT",
     headers: { "Content-Type": "application/json", cookie: studentCookie },
     body: JSON.stringify({
-      snapshot: {
-        ...escalateBody.snapshot,
-        portfolio: {
-          published: true,
-          theme: "aurora",
-          slug: `audit-student-${stamp}`,
-          visibility: "public",
-          showContact: false,
-          showEvidence: true,
-          tagline: "Public audit portfolio",
-        },
-        applications: [{ opportunityId: "secret-app", status: "applied", updatedAt: "2026-01-01" }],
-        experiences: [
-          {
-            id: "exp-label",
-            type: "volunteer",
-            role: "Volunteer",
-            organization: "Label Only",
-            location: "",
-            start: "2024-01",
-            end: "",
-            current: true,
-            description: "Labels are not evidence.",
-            skills: ["Leadership"],
-            evidence: [{ id: "ev-fake", type: "certificate", label: "I say this is verified", status: "verified" }],
-          },
-        ],
-      },
+      snapshot: studentSnapshot({
+        slug: publicSlug,
+        published: true,
+        visibility: "public",
+        showEvidence: true,
+        tagline: "Public audit portfolio",
+        skills: evidenceSkills,
+        experiences: evidenceExperiences,
+        applications: [{ opportunityId: id("secret-app"), status: "applied", updatedAt: "2026-01-01" }],
+      }),
     }),
   })
   const published = await json(publishPortfolio)
@@ -496,7 +824,15 @@ async function httpTests() {
     "evidence labels do not make a skill evidence-backed",
     published.snapshot?.skills?.every((skill) => skill.name !== "Leadership" || skill.evidenceBacked === false),
   )
-  const publicRes = await req(`/api/public/portfolio/${published.snapshot?.portfolio?.slug || `audit-student-${stamp}`}`)
+  if (ownedUploadId) {
+    record(
+      "uploaded evidence makes a skill evidence-backed",
+      Boolean(published.snapshot?.skills?.some((skill) => skill.name === "Communication" && skill.evidenceBacked === true)),
+    )
+  } else {
+    skip("uploaded evidence makes a skill evidence-backed", "NOT RUN — production Blob storage not configured")
+  }
+  const publicRes = await req(`/api/public/portfolio/${published.snapshot?.portfolio?.slug || publicSlug}`)
   const publicBody = await json(publicRes)
   record("public portfolio is available when published", publicRes.ok)
   record(
@@ -511,23 +847,18 @@ async function httpTests() {
   const privateSlug = await req("/api/public/portfolio/amara-okafor")
   record("unpublished/private portfolios are not exposed", privateSlug.status === 404)
 
-  const unlistedSlug = `audit-unlisted-${stamp}`
   await req("/api/auth/profile", {
     method: "PUT",
     headers: { "Content-Type": "application/json", cookie: studentCookie },
     body: JSON.stringify({
-      snapshot: {
-        ...published.snapshot,
-        portfolio: {
-          published: true,
-          theme: "aurora",
-          slug: unlistedSlug,
-          visibility: "unlisted",
-          showContact: false,
-          showEvidence: false,
-          tagline: "",
-        },
-      },
+      snapshot: studentSnapshot({
+        slug: unlistedSlug,
+        published: true,
+        visibility: "unlisted",
+        showEvidence: false,
+        skills: evidenceSkills,
+        experiences: evidenceExperiences,
+      }),
     }),
   })
   const unlistedAnon = await req(`/api/public/portfolio/${unlistedSlug}`)
@@ -565,6 +896,7 @@ async function httpTests() {
 }
 
 const failed = []
+const skipped = []
 try {
   await unitTests()
   await httpTests()
@@ -573,10 +905,15 @@ try {
 }
 
 for (const item of results) {
-  if (!item.ok) failed.push(item.name)
+  if (item.skipped) skipped.push(item.name)
+  else if (!item.ok) failed.push(item.name)
 }
+const passed = results.filter((item) => item.ok).length
 console.log("")
-console.log(`${results.filter((item) => item.ok).length}/${results.length} checks passed`)
+console.log(`${passed}/${results.length} checks passed${skipped.length ? `, ${skipped.length} not run` : ""}`)
+if (skipped.length) {
+  console.log("Not run:", skipped.join(", "))
+}
 if (failed.length) {
   console.error("Failed:", failed.join(", "))
   process.exit(1)

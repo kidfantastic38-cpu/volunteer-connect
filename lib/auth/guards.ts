@@ -9,6 +9,9 @@ export async function requireUser(): Promise<AuthUser | NextResponse> {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = await findUserById(session.sub)
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (user.status && user.status !== "active") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
   return user
 }
 
@@ -26,7 +29,7 @@ export async function requireVerifiedEmployer(): Promise<AuthUser | NextResponse
   const user = await requireRole("employer")
   if (user instanceof NextResponse) return user
   const org = await findOrganizationByOwner(user.id)
-  if (!org || org.verificationStatus !== "approved") {
+  if (!org || org.verificationStatus !== "approved" || org.suspended) {
     return NextResponse.json(
       {
         error:

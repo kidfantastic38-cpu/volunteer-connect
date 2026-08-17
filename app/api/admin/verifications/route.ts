@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { recordAdminAudit } from "@/lib/admin/service"
 import { isResponse, requireRole } from "@/lib/auth/guards"
 import { listVerificationRequests, reviewVerification } from "@/lib/org/db"
 import type { VerificationStatus } from "@/lib/org/types"
@@ -42,5 +43,11 @@ export async function POST(req: Request) {
     notes: body.notes,
   })
   if (!organization) return NextResponse.json({ error: "Organization not found." }, { status: 404 })
+  await recordAdminAudit({
+    actorId: user.id,
+    action: `employer.${status}`,
+    entityType: "organization",
+    entityId: organizationId,
+  })
   return NextResponse.json({ organization, requests: await listVerificationRequests() })
 }

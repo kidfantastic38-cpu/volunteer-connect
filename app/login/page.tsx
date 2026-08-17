@@ -18,7 +18,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     router.prefetch("/dashboard")
-    router.prefetch("/admin")
+    router.prefetch("/admin/dashboard")
   }, [router])
   const [form, setForm] = useState({ email: "", password: "" })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -46,7 +46,7 @@ export default function LoginPage() {
     void apiLogin({ email, password })
       .then((payload) => {
         restoreAccount(payload)
-        router.push(payload.user.role === "admin" ? "/admin" : payload.user.role === "employer" ? "/employer" : "/dashboard")
+        router.push(payload.user.role === "admin" ? "/admin/dashboard" : payload.user.role === "employer" ? "/employer" : "/dashboard")
       })
       .catch((err: unknown) => {
         setFormError(err instanceof Error ? err.message : "We couldn't find an account with those details.")

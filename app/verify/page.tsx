@@ -16,6 +16,7 @@ function VerifyForm() {
   const params = useSearchParams()
   const { user, verifyAccount, role } = usePrototype()
   const next = params.get("next") || (role === "employer" ? "/employer" : "/onboarding")
+  const mailFailed = params.get("mail") === "0"
 
   const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""])
   const [error, setError] = useState("")
@@ -105,9 +106,13 @@ function VerifyForm() {
       </div>
       <h1 className="font-display text-2xl font-bold tracking-tight">Verify your email</h1>
       <p className="mt-1 text-sm text-muted-foreground text-pretty">
-        We sent a 6-digit code to{" "}
-        <span className="font-medium text-foreground">{user?.email || "your email"}</span>. Enter it below to activate
-        your account.
+        {mailFailed
+          ? "Your account was created, but we could not send the verification email. Please try resending the code."
+          : <>
+              We sent a 6-digit code to{" "}
+              <span className="font-medium text-foreground">{user?.email || "your email"}</span>. Enter it below to
+              activate your account.
+            </>}
       </p>
 
       <form onSubmit={submit} className="mt-6">

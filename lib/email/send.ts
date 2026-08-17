@@ -33,6 +33,7 @@ export async function sendVerificationEmail(input: { to: string; code: string })
   const apiKey = brevoApiKey()
   const fromRaw = process.env.EMAIL_FROM?.trim()
   if (!apiKey || !fromRaw) {
+    console.error("[email] missing BREVO_API_KEY or EMAIL_FROM")
     throw new Error("BREVO_API_KEY and EMAIL_FROM are required to send email.")
   }
 
@@ -63,8 +64,25 @@ export async function sendVerificationEmail(input: { to: string; code: string })
   })
 
   if (!res.ok) {
+    let code = "unknown"
+    let message = "rejected"
+    try {
+      const body = (await res.json()) as { code?: unknown; message?: unknown }
+      if (typeof body.code === "string") code = body.code.slice(0, 80)
+      if (typeof body.message === "string") message = body.message.slice(0, 160)
+    } catch {
+      // Keep generic diagnostics if the provider body is not JSON.
+    }
+    console.error("[email] brevo rejected", {
+      status: res.status,
+      code,
+      message,
+      senderDomain: sender.email.includes("@") ? sender.email.split("@")[1] : "invalid",
+    })
     throw new Error("Could not send the verification email.")
   }
+
+  console.info("[email] brevo accepted", { status: res.status })
 }
 
 function isProductionLike(): boolean {

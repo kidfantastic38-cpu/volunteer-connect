@@ -6,6 +6,7 @@ export type AuthUser = {
   name: string
   role: AuthRole
   emailVerified: boolean
+  status?: string
 }
 
 export type ProfileSnapshot = {

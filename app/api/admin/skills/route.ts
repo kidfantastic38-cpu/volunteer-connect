@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { recordAdminAudit } from "@/lib/admin/service"
 import { findUserById, getProfileSnapshot, saveProfileSnapshot } from "@/lib/auth/db"
 import { isResponse, requireRole } from "@/lib/auth/guards"
 import { sanitizeProfileSnapshot } from "@/lib/auth/sanitize-profile"
@@ -40,5 +41,12 @@ export async function POST(req: Request) {
   })
   const raw = await getProfileSnapshot(userId)
   if (raw) await saveProfileSnapshot(userId, await sanitizeProfileSnapshot(target, raw))
+  await recordAdminAudit({
+    actorId: admin.id,
+    action: body.verified ? "skill.verified" : "skill.unverified",
+    entityType: "skill",
+    entityId: userId,
+    metadata: { skillName },
+  })
   return NextResponse.json({ ok: true, verification: record })
 }

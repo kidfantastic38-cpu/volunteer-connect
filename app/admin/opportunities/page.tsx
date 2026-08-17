@@ -1,134 +1,74 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { Briefcase, MapPin, Search, Trash2 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Briefcase } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
-import { usePrototype } from "@/components/prototype-store"
-import { Chip, EmptyState } from "@/components/ui-bits"
-import { TextInput } from "@/components/form-controls"
+import { AdminConfirm, AdminError, AdminHeader, AdminLoading } from "@/components/admin-ui"
 import { Button } from "@/components/ui/button"
-import { Modal } from "@/components/modal"
+import { Chip, EmptyState } from "@/components/ui-bits"
+import { adminApi, type AdminOppRow } from "@/lib/admin/client"
 
 export default function AdminOpportunitiesPage() {
-  const { opportunities, removeOpportunity } = usePrototype()
-  const [query, setQuery] = useState("")
-  const [typeFilter, setTypeFilter] = useState<string>("all")
-  const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+  const [rows, setRows] = useState<AdminOppRow[]>([])
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [pending, setPending] = useState<{ id: string; status: "published" | "closed" | "archived"; title: string } | null>(null)
 
-  const types = useMemo(() => ["all", ...Array.from(new Set(opportunities.map((o) => o.type)))], [opportunities])
+  const load = () => {
+    void adminApi
+      .opportunities()
+      .then((data) => setRows(data.opportunities))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not load opportunities."))
+      .finally(() => setLoading(false))
+  }
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return opportunities.filter((o) => {
-      const matchesType = typeFilter === "all" || o.type === typeFilter
-      const matchesQuery =
-        q === "" || o.title.toLowerCase().includes(q) || o.org.toLowerCase().includes(q) || o.location.toLowerCase().includes(q)
-      return matchesType && matchesQuery
-    })
-  }, [opportunities, query, typeFilter])
-
-  const removing = opportunities.find((o) => o.id === pendingRemove)
+  useEffect(() => {
+    load()
+  }, [])
 
   return (
     <AppShell requiredRole="admin">
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold tracking-tight">Opportunity management</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Review and moderate every opportunity listed across the platform.
-        </p>
-      </div>
-
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <TextInput
-            aria-label="Search opportunities"
-            placeholder="Search by title, organisation or location"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {types.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTypeFilter(t)}
-              className={
-                "rounded-full px-3 py-1.5 text-xs font-medium capitalize transition-colors " +
-                (typeFilter === t
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:text-foreground")
-              }
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={<Briefcase className="size-5" aria-hidden="true" />}
-          title="No opportunities found"
-          description="Try adjusting your search or filters."
-        />
+      <AdminHeader title="Opportunities" description="Moderate listings without changing employer ownership." />
+      <AdminError message={error} />
+      {loading ? (
+        <AdminLoading />
+      ) : rows.length === 0 ? (
+        <EmptyState icon={<Briefcase className="size-6" />} title="No opportunities" description="Published and draft listings will appear here." />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-e1">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-border bg-muted/50 text-xs text-muted-foreground">
+        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+          <table className="w-full min-w-[800px] text-left text-sm">
+            <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-4 py-3 font-medium">Opportunity</th>
-                <th className="hidden px-4 py-3 font-medium sm:table-cell">Type</th>
-                <th className="hidden px-4 py-3 font-medium md:table-cell">Location</th>
-                <th className="hidden px-4 py-3 font-medium lg:table-cell">Skills</th>
-                <th className="px-4 py-3 text-right font-medium">Action</th>
+                <th className="px-4 py-3">Title</th>
+                <th className="px-4 py-3">Organization</th>
+                <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Created</th>
+                <th className="px-4 py-3">Deadline</th>
+                <th className="px-4 py-3">Applications</th>
+                <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((o) => (
-                <tr key={o.id} className="align-top">
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td className="px-4 py-3 font-medium">{row.title}</td>
+                  <td className="px-4 py-3">{row.organizationName}</td>
+                  <td className="px-4 py-3 capitalize">{row.type}</td>
                   <td className="px-4 py-3">
-                    <p className="font-medium text-foreground">{o.title}</p>
-                    <p className="text-xs text-muted-foreground">{o.org}</p>
+                    <Chip>{row.status}</Chip>
                   </td>
-                  <td className="hidden px-4 py-3 sm:table-cell">
-                    <Chip tone="muted" className="capitalize">
-                      {o.type}
-                    </Chip>
-                  </td>
-                  <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin className="size-3.5" aria-hidden="true" />
-                      {o.location}
-                    </span>
-                  </td>
-                  <td className="hidden max-w-xs px-4 py-3 lg:table-cell">
+                  <td className="px-4 py-3">{new Date(row.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3">{row.deadline || "—"}</td>
+                  <td className="px-4 py-3">{row.applicants}</td>
+                  <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
-                      {o.skills.slice(0, 3).map((s) => (
-                        <Chip key={s} tone="muted">
-                          {s}
-                        </Chip>
+                      {(["closed", "archived"] as const).map((status) => (
+                        <Button key={status} size="sm" variant="ghost" onClick={() => setPending({ id: row.id, status, title: row.title })}>
+                          {status}
+                        </Button>
                       ))}
-                      {o.skills.length > 3 ? (
-                        <span className="text-xs text-muted-foreground">+{o.skills.length - 3}</span>
-                      ) : null}
                     </div>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPendingRemove(o.id)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="size-4" aria-hidden="true" />
-                      <span className="sr-only sm:not-sr-only">Remove</span>
-                    </Button>
                   </td>
                 </tr>
               ))}
@@ -136,28 +76,22 @@ export default function AdminOpportunitiesPage() {
           </table>
         </div>
       )}
-
-      <Modal
-        open={pendingRemove !== null}
-        onClose={() => setPendingRemove(null)}
-        title="Remove opportunity"
-        description={removing ? `"${removing.title}" will be removed from the platform for all users.` : ""}
-      >
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setPendingRemove(null)}>
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => {
-              if (pendingRemove) removeOpportunity(pendingRemove)
-              setPendingRemove(null)
-            }}
-          >
-            Remove opportunity
-          </Button>
-        </div>
-      </Modal>
+      <AdminConfirm
+        open={!!pending}
+        title={`${pending?.status === "archived" ? "Archive" : "Close"} this opportunity?`}
+        description={`“${pending?.title ?? ""}” will change status. Employer ownership is not changed.`}
+        confirmLabel={pending?.status === "archived" ? "Archive" : "Close"}
+        onClose={() => setPending(null)}
+        onConfirm={() => {
+          if (!pending) return
+          const next = pending
+          setPending(null)
+          void adminApi
+            .patchOpportunity(next.id, next.status)
+            .then(load)
+            .catch((err: unknown) => setError(err instanceof Error ? err.message : "Update failed."))
+        }}
+      />
     </AppShell>
   )
 }
