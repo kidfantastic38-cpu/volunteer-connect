@@ -5,12 +5,13 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AlertCircle, Briefcase, GraduationCap, Loader2 } from "lucide-react"
 import { AuthShell } from "@/components/auth-shell"
-import { Field, Input } from "@/components/form-controls"
+import { Field, Input, Select, Textarea } from "@/components/form-controls"
 import { Button } from "@/components/ui/button"
 import { PasswordInput } from "@/components/ui/password-input"
 import { usePrototype, type Role } from "@/components/prototype-store"
 import { apiRegister } from "@/lib/auth/client"
 import { normalizeEmail } from "@/lib/auth/normalize"
+import { ORGANIZATION_TYPES, type OrganizationType } from "@/lib/org/types"
 import { cn } from "@/lib/utils"
 
 function RegisterForm() {
@@ -19,16 +20,29 @@ function RegisterForm() {
   const { restoreAccount } = usePrototype()
 
   const [role, setRole] = useState<Role>(params.get("role") === "employer" ? "employer" : "student")
-  const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" })
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirm: "",
+    orgName: "",
+    orgType: "Company" as OrganizationType,
+    orgEmail: "",
+    phone: "",
+    website: "",
+    registrationNumber: "",
+    address: "",
+    logoUrl: "",
+  })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }))
 
   const validate = () => {
     const e: Record<string, string> = {}
-    if (!form.name.trim()) e.name = "Please enter your name."
+    if (!form.name.trim()) e.name = role === "employer" ? "Please enter a contact name." : "Please enter your name."
     const email = normalizeEmail(form.email)
     if (!email) e.email = "Email is required."
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Enter a valid email address."
@@ -37,6 +51,13 @@ function RegisterForm() {
     if (!form.password) e.password = "Choose a password."
     else if (form.password.length < 6) e.password = "Use at least 6 characters."
     if (form.confirm !== form.password) e.confirm = "Passwords do not match."
+    if (role === "employer") {
+      if (!form.orgName.trim()) e.orgName = "Organization name is required."
+      if (!normalizeEmail(form.orgEmail) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(form.orgEmail)))
+        e.orgEmail = "Enter a valid organization email."
+      if (!form.phone.trim()) e.phone = "Contact phone is required."
+      if (!form.address.trim()) e.address = "Address is required."
+    }
     return e
   }
 
@@ -46,7 +67,25 @@ function RegisterForm() {
     setErrors(e)
     if (Object.keys(e).length > 0) return
     setSubmitting(true)
-    void apiRegister({ name: form.name.trim(), email: normalizeEmail(form.email), password: form.password, role })
+    void apiRegister({
+      name: form.name.trim(),
+      email: normalizeEmail(form.email),
+      password: form.password,
+      role,
+      organization:
+        role === "employer"
+          ? {
+              name: form.orgName.trim(),
+              organizationType: form.orgType,
+              organizationEmail: normalizeEmail(form.orgEmail),
+              phone: form.phone.trim(),
+              website: form.website.trim(),
+              registrationNumber: form.registrationNumber.trim(),
+              address: form.address.trim(),
+              logoUrl: form.logoUrl.trim(),
+            }
+          : undefined,
+    })
       .then((payload) => {
         restoreAccount(payload)
         const next = payload.user.role === "employer" ? "/employer" : "/onboarding"
@@ -86,8 +125,8 @@ function RegisterForm() {
       </div>
 
       <form onSubmit={onSubmit} noValidate className="mt-5 space-y-4">
-        <Field label={role === "employer" ? "Organization / your name" : "Full name"} htmlFor="name" error={errors.name}>
-          <Input id="name" value={form.name} onChange={set("name")} placeholder="Amara Okafor" autoComplete="name" />
+        <Field label={role === "employer" ? "Contact name" : "Full name"} htmlFor="name" error={errors.name}>
+          <Input id="name" value={form.name} onChange={set("name")} placeholder={role === "employer" ? "Jordan Lee" : "Amara Okafor"} autoComplete="name" />
         </Field>
         <Field label="Email" htmlFor="email" error={errors.email}>
           <Input id="email" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" autoComplete="email" />
@@ -101,6 +140,47 @@ function RegisterForm() {
           </Field>
         </div>
 
+        {role === "employer" ? (
+          <div className="space-y-4 rounded-xl border border-border bg-muted/40 p-4">
+            <p className="text-sm font-semibold text-foreground">Organization details</p>
+            <p className="text-xs text-muted-foreground">
+              Your organization will be reviewed before you can post opportunities.
+            </p>
+            <Field label="Organization name" htmlFor="orgName" error={errors.orgName}>
+              <Input id="orgName" value={form.orgName} onChange={set("orgName")} placeholder="EarthWise Foundation" />
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Organization type" htmlFor="orgType">
+                <Select id="orgType" value={form.orgType} onChange={set("orgType")}>
+                  {ORGANIZATION_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Organization email" htmlFor="orgEmail" error={errors.orgEmail}>
+                <Input id="orgEmail" type="email" value={form.orgEmail} onChange={set("orgEmail")} placeholder="hello@organization.org" />
+              </Field>
+            </div>
+            <Field label="Contact phone" htmlFor="phone" error={errors.phone}>
+              <Input id="phone" type="tel" value={form.phone} onChange={set("phone")} placeholder="+44 161 000 0000" autoComplete="tel" />
+            </Field>
+            <Field label="Website (optional)" htmlFor="website">
+              <Input id="website" type="url" value={form.website} onChange={set("website")} placeholder="https://" />
+            </Field>
+            <Field label="Business registration number (optional)" htmlFor="registrationNumber">
+              <Input id="registrationNumber" value={form.registrationNumber} onChange={set("registrationNumber")} placeholder="REG-000000" />
+            </Field>
+            <Field label="Address" htmlFor="address" error={errors.address}>
+              <Textarea id="address" value={form.address} onChange={set("address")} placeholder="Street, city, postcode" />
+            </Field>
+            <Field label="Organization logo URL (optional)" htmlFor="logoUrl">
+              <Input id="logoUrl" value={form.logoUrl} onChange={set("logoUrl")} placeholder="https://…/logo.png" />
+            </Field>
+          </div>
+        ) : null}
+
         <Button type="submit" disabled={submitting} className="h-11 w-full text-sm">
           {submitting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
           {submitting ? "Creating account…" : "Create account"}
@@ -109,8 +189,9 @@ function RegisterForm() {
 
       <p className="mt-5 flex items-start gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
         <AlertCircle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-        Tip: try <span className="font-medium text-foreground">amara@example.com</span> to see the &quot;already
-        registered&quot; error path.
+        Demo tip only: <span className="font-medium text-foreground">amara@example.com</span> is already a
+        sample account, so the form shows &quot;already registered.&quot; Use your own email to create a real
+        account.
       </p>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">

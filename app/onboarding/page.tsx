@@ -35,7 +35,7 @@ const stepMeta = [
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const store = usePrototype()
+  usePrototype()
   const [step, setStep] = useState(0)
 
   const next = () => setStep((s) => Math.min(stepMeta.length - 1, s + 1))

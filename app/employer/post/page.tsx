@@ -2,16 +2,22 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Check } from "lucide-react"
+import { Check, Loader2 } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
+import { VerificationBanner } from "@/components/verification-banner"
 import { usePrototype, type OppType } from "@/components/prototype-store"
 import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/button-link"
 import { Field, TextInput, TextArea, SelectInput } from "@/components/form-controls"
+import { apiPublishOpportunity } from "@/lib/auth/client"
 
 export default function PostOpportunityPage() {
-  const { postOpportunity } = usePrototype()
+  const { organization, refreshMarketplace } = usePrototype()
   const router = useRouter()
   const [done, setDone] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState("")
+  const verified = organization?.verificationStatus === "approved"
   const [form, setForm] = useState({
     title: "",
     org: "",
@@ -24,25 +30,33 @@ export default function PostOpportunityPage() {
     skills: "",
   })
 
-  const submit = (e: React.FormEvent) => {
+  const submit = (e: React.FormEvent, status: "draft" | "published" = "published") => {
     e.preventDefault()
-    postOpportunity({
+    if (!verified) return
+    setError("")
+    setSubmitting(true)
+    void apiPublishOpportunity({
       title: form.title,
-      org: form.org,
+      description: form.description,
       type: form.type,
-      location: form.location || (form.remote ? "Remote" : "—"),
+      location: form.location || (form.remote ? "Remote" : ""),
       remote: form.remote,
       compensation: form.compensation || undefined,
       deadline: form.deadline || "Open",
-      description: form.description,
       skills: form.skills.split(",").map((s) => s.trim()).filter(Boolean),
+      status,
     })
-    setDone(true)
+      .then(() => refreshMarketplace())
+      .then(() => setDone(true))
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Could not save this opportunity.")
+      })
+      .finally(() => setSubmitting(false))
   }
 
   if (done) {
     return (
-      <AppShell>
+      <AppShell requiredRole="employer">
         <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-8 text-center">
           <div className="mx-auto grid size-14 place-items-center rounded-full bg-success/15 text-success">
             <Check className="size-7" aria-hidden="true" />
@@ -63,13 +77,26 @@ export default function PostOpportunityPage() {
   }
 
   return (
-    <AppShell>
+    <AppShell requiredRole="employer">
       <div className="mx-auto max-w-2xl">
         <h1 className="font-display text-2xl font-bold tracking-tight">Post an opportunity</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Describe the role and the skills you need — we&apos;ll surface the best-matched candidates.
         </p>
-
+        <div className="mt-4">
+          <VerificationBanner status={organization?.verificationStatus} />
+        </div>
+        {!verified ? (
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <p className="text-sm text-muted-foreground">
+              Your organization verification is pending. You can complete your profile, but posting opportunities will
+              be unlocked after approval.
+            </p>
+            <ButtonLink href="/employer/organization" className="mt-4">
+              Go to organization profile
+            </ButtonLink>
+          </div>
+        ) : (
         <form onSubmit={submit} className="mt-6 flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 sm:p-6">
           <Field label="Opportunity title" htmlFor="op-title">
             <TextInput id="op-title" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Sustainability Programme Assistant" />
@@ -118,9 +145,17 @@ export default function PostOpportunityPage() {
             <Button type="button" variant="ghost" onClick={() => router.push("/employer")}>
               Cancel
             </Button>
-            <Button type="submit">Publish opportunity</Button>
+            {error ? <p className="self-center text-sm text-destructive">{error}</p> : null}
+            <Button type="button" variant="outline" disabled={!verified || submitting} onClick={(e) => submit(e, "draft")}>
+              Save draft
+            </Button>
+            <Button type="submit" disabled={!verified || submitting}>
+              {submitting ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+              {submitting ? "Publishing…" : "Publish opportunity"}
+            </Button>
           </div>
         </form>
+        )}
       </div>
     </AppShell>
   )

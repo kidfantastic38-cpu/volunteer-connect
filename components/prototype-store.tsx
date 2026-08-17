@@ -1,8 +1,26 @@
 "use client"
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
-import { apiLogout, apiMe, apiSaveProfile, type AuthResponse } from "@/lib/auth/client"
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import {
+  apiApply,
+  apiArchiveOpportunity,
+  apiListApplications,
+  apiListOpportunities,
+  apiLogout,
+  apiMe,
+  apiOrgBadges,
+  apiPublishOpportunity,
+  apiSaveOpportunity,
+  apiSaveProfile,
+  apiUpdateApplication,
+  apiVerifyEmail,
+  type ApiApplication,
+  type ApiOpportunity,
+  type AuthResponse,
+} from "@/lib/auth/client"
+import { scoreOpportunityMatch } from "@/lib/matching/score"
 import type { AuthUser, ProfileSnapshot } from "@/lib/auth/types"
+import type { Organization, VerificationStatus } from "@/lib/org/types"
 
 /* ---------------------------------- Types --------------------------------- */
 
@@ -23,6 +41,7 @@ export type Skill = {
   category: "Communication" | "Leadership" | "Technical" | "Teamwork" | "Problem Solving" | "Creativity" | "Organization"
   source: string
   verified: boolean
+  evidenceBacked?: boolean
 }
 
 export type Education = {
@@ -89,15 +108,31 @@ export type Opportunity = {
   deadline: string
   compensation?: string
   providerId?: string
+  organizationId?: string
   applicants?: number
+  matchScore?: number | null
+  status?: string
 }
 
-export type ApplicationStatus = "saved" | "applied" | "interview" | "offer" | "rejected"
+export type ApplicationStatus =
+  | "saved"
+  | "submitted"
+  | "under_review"
+  | "shortlisted"
+  | "accepted"
+  | "rejected"
+  | "withdrawn"
+  | "applied"
+  | "interview"
+  | "offer"
 
 export type Application = {
+  id?: string
   opportunityId: string
   status: ApplicationStatus
   updatedAt: string
+  opportunityTitle?: string
+  organizationName?: string
 }
 
 export type Profile = {
@@ -273,85 +308,6 @@ const demoProfile: Profile = {
   avatar: "chart-1",
 }
 
-const seedOpportunities: Opportunity[] = [
-  {
-    id: "op-1",
-    title: "Sustainability Programme Assistant",
-    org: "EarthWise Foundation",
-    type: "job",
-    location: "Manchester, UK",
-    remote: false,
-    description: "Support the delivery of community sustainability programmes and volunteer coordination.",
-    skills: ["Leadership", "Organization", "Communication", "Teamwork"],
-    deadline: "2026-09-15",
-    compensation: "£23,000 / year",
-    applicants: 34,
-  },
-  {
-    id: "op-2",
-    title: "Digital Marketing Internship",
-    org: "GreenLeaf Startups",
-    type: "internship",
-    location: "Remote",
-    remote: true,
-    description: "12-week paid internship running social campaigns for climate-focused startups.",
-    skills: ["Content Creation", "Analytics", "Creativity", "Communication"],
-    deadline: "2026-08-30",
-    compensation: "£1,400 / month",
-    applicants: 58,
-  },
-  {
-    id: "op-3",
-    title: "Youth Leadership Scholarship",
-    org: "Future Leaders Trust",
-    type: "scholarship",
-    location: "UK-wide",
-    remote: true,
-    description: "£5,000 scholarship for young people demonstrating exceptional community leadership.",
-    skills: ["Leadership", "Communication", "Problem Solving"],
-    deadline: "2026-10-01",
-    compensation: "£5,000 award",
-    applicants: 120,
-  },
-  {
-    id: "op-4",
-    title: "Weekend Food Bank Volunteer",
-    org: "City Harvest",
-    type: "volunteering",
-    location: "Manchester, UK",
-    remote: false,
-    description: "Help sort and distribute food parcels to local families every Saturday.",
-    skills: ["Teamwork", "Organization"],
-    deadline: "2026-12-31",
-    applicants: 12,
-  },
-  {
-    id: "op-5",
-    title: "Data & Impact Analysis Bootcamp",
-    org: "SkillBridge Academy",
-    type: "training",
-    location: "Online",
-    remote: true,
-    description: "Free 6-week training in measuring social impact with spreadsheets and dashboards.",
-    skills: ["Analytics", "Technical", "Problem Solving"],
-    deadline: "2026-09-20",
-    applicants: 90,
-  },
-  {
-    id: "op-6",
-    title: "Communications Assistant",
-    org: "Northern Arts Collective",
-    type: "job",
-    location: "Leeds, UK",
-    remote: false,
-    description: "Draft newsletters, manage the events calendar and support the small comms team.",
-    skills: ["Communication", "Content Creation", "Organization"],
-    deadline: "2026-09-10",
-    compensation: "£21,500 / year",
-    applicants: 26,
-  },
-]
-
 const demoNotifications: AppNotification[] = [
   {
     id: uid(),
@@ -396,7 +352,7 @@ const defaultPortfolio: PortfolioSettings = {
   theme: "aurora",
   slug: "amara-okafor",
   visibility: "unlisted",
-  showContact: true,
+  showContact: false,
   showEvidence: true,
   tagline: "Turning community impact into a career in sustainability.",
 }
@@ -446,6 +402,8 @@ type Store = {
   user: Profile | null
   loggedIn: boolean
   verified: boolean
+  organization: Organization | null
+  orgBadges: Record<string, VerificationStatus>
   onboarding: OnboardingState
   education: Education[]
   experiences: Experience[]
@@ -462,7 +420,8 @@ type Store = {
   categories: PlatformCategory[]
   // auth — session is cookie + SQLite only; these hydrate UI from API payloads
   restoreAccount: (payload: AuthResponse) => void
-  verifyAccount: () => void
+  verifyAccount: (code: string) => Promise<void>
+  setOrganization: (org: Organization | null) => void
   logout: () => void
   // notifications
   markNotificationRead: (id: string) => void
@@ -493,9 +452,10 @@ type Store = {
   removeSkill: (id: string) => void
   loadSample: () => void
   // opportunities
-  setApplication: (opportunityId: string, status: ApplicationStatus) => void
+  setApplication: (opportunityId: string, status: ApplicationStatus, coverMessage?: string) => void
   postOpportunity: (o: Omit<Opportunity, "id" | "providerId" | "applicants">) => void
   matchScore: (o: Opportunity) => number
+  refreshMarketplace: () => Promise<void>
 }
 
 const Ctx = createContext<Store | null>(null)
@@ -540,23 +500,25 @@ function applyAccountPayload(
     setPortfolio: (v: PortfolioSettings) => void
     setPrivacy: (v: PrivacySettings) => void
     setCvTemplateState: (v: CvTemplate) => void
+    setOrganization: (v: Organization | null) => void
   },
 ) {
   const { user: account, snapshot } = payload
   set.setAccountId(account.id)
   set.setRole(account.role)
   set.setLoggedIn(true)
+  set.setOrganization(payload.organization ?? null)
+  set.setVerified(payload.emailVerified || account.emailVerified)
 
   if (snapshot?.user) {
-    set.setUser(snapshot.user)
-    set.setVerified(snapshot.verified)
+    set.setUser({ ...snapshot.user, email: account.email })
+    set.setVerified(payload.emailVerified || account.emailVerified)
     set.setOnboarding(snapshot.onboarding ?? emptyOnboarding)
     set.setEducation((snapshot.education as Education[]) ?? [])
     set.setExperiences((snapshot.experiences as Experience[]) ?? [])
     set.setProjects((snapshot.projects as Project[]) ?? [])
     set.setAchievements((snapshot.achievements as Achievement[]) ?? [])
     set.setSkills((snapshot.skills as Skill[]) ?? [])
-    set.setApplications((snapshot.applications as Application[]) ?? [])
     set.setNotifications((snapshot.notifications as AppNotification[]) ?? [])
     set.setPortfolio((snapshot.portfolio as PortfolioSettings) ?? defaultPortfolio)
     set.setPrivacy((snapshot.privacy as PrivacySettings) ?? defaultPrivacy)
@@ -572,7 +534,6 @@ function applyAccountPayload(
   set.setProjects([])
   set.setAchievements([])
   set.setSkills([])
-  set.setApplications([])
   set.setNotifications([])
   set.setPortfolio({
     ...defaultPortfolio,
@@ -595,7 +556,8 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([])
   const [achievements, setAchievements] = useState<Achievement[]>([])
   const [skills, setSkills] = useState<Skill[]>([])
-  const [opportunities, setOpportunities] = useState<Opportunity[]>(seedOpportunities)
+  const applyingServerSkills = useRef(false)
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [applications, setApplications] = useState<Application[]>([])
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [portfolio, setPortfolio] = useState<PortfolioSettings>(defaultPortfolio)
@@ -603,6 +565,8 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
   const [cvTemplate, setCvTemplateState] = useState<CvTemplate>("modern")
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>(seedAdminUsers)
   const [categories, setCategories] = useState<PlatformCategory[]>(seedCategories)
+  const [organization, setOrganization] = useState<Organization | null>(null)
+  const [orgBadges, setOrgBadges] = useState<Record<string, VerificationStatus>>({})
 
   useEffect(() => {
     const boot = async () => {
@@ -630,7 +594,18 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
           setPortfolio,
           setPrivacy,
           setCvTemplateState,
+          setOrganization,
         })
+      }
+      const badges = await apiOrgBadges()
+      setOrgBadges(badges)
+      if (remote?.user) {
+        const [listed, apps] = await Promise.all([
+          loadOpportunities(remote.user.role),
+          apiListApplications(),
+        ])
+        setOpportunities(listed)
+        setApplications(apps.map(mapApplication))
       }
       setSessionReady(true)
     }
@@ -639,6 +614,10 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!sessionReady || !loggedIn || !accountId || !user || !role) return
+    if (applyingServerSkills.current) {
+      applyingServerSkills.current = false
+      return
+    }
     const snapshot: ProfileSnapshot = {
       user,
       role,
@@ -649,14 +628,28 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       projects,
       achievements,
       skills,
-      applications,
+      applications: [],
       notifications,
       portfolio,
       privacy,
       cvTemplate,
     }
     const t = window.setTimeout(() => {
-      void apiSaveProfile(snapshot)
+      void apiSaveProfile(snapshot).then((clean) => {
+        if (!clean || !Array.isArray(clean.skills)) return
+        const serverSkills = clean.skills as Skill[]
+        const changed = serverSkills.some((skill, index) => {
+          const current = skills[index]
+          return !current || current.verified !== skill.verified || current.evidenceBacked !== skill.evidenceBacked
+        })
+        if (!changed && serverSkills.length === skills.length) return
+        applyingServerSkills.current = true
+        setSkills(serverSkills)
+        setVerified(Boolean(clean.verified))
+        if (clean.role === "student" || clean.role === "employer" || clean.role === "admin") {
+          setRole(clean.role)
+        }
+      })
     }, 700)
     return () => window.clearTimeout(t)
   }, [
@@ -672,7 +665,6 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     projects,
     achievements,
     skills,
-    applications,
     notifications,
     portfolio,
     privacy,
@@ -707,6 +699,8 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     user,
     loggedIn,
     verified,
+    organization,
+    orgBadges,
     onboarding,
     education,
     experiences,
@@ -739,9 +733,19 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
         setPortfolio,
         setPrivacy,
         setCvTemplateState,
+        setOrganization,
+      })
+      void Promise.all([loadOpportunities(payload.user.role), apiListApplications()]).then(([listed, apps]) => {
+        setOpportunities(listed)
+        setApplications(apps.map(mapApplication))
       })
     },
-    verifyAccount: () => setVerified(true),
+    verifyAccount: async (code: string) => {
+      const payload = await apiVerifyEmail(code)
+      setVerified(payload.emailVerified)
+      setOrganization(payload.organization ?? null)
+    },
+    setOrganization,
     logout: () => {
       void apiLogout()
       setAccountId(null)
@@ -749,6 +753,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       setRole(null)
       setUser(null)
       setVerified(false)
+      setOrganization(null)
       setOnboarding(emptyOnboarding)
       setEducation([])
       setExperiences([])
@@ -759,7 +764,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       setNotifications([])
       setPortfolio(defaultPortfolio)
       setPrivacy(defaultPrivacy)
-      setOpportunities(seedOpportunities)
+      setOpportunities([])
     },
     markNotificationRead: (id) =>
       setNotifications((list) => list.map((n) => (n.id === id ? { ...n, read: true } : n))),
@@ -774,7 +779,11 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       setCategories((list) => list.map((c) => (c.id === id ? { ...c, active: !c.active } : c))),
     addCategory: (name) =>
       setCategories((list) => [...list, { id: uid(), name, skillCount: 0, active: true }]),
-    removeOpportunity: (id) => setOpportunities((list) => list.filter((o) => o.id !== id)),
+    removeOpportunity: (id) => {
+      void apiArchiveOpportunity(id)
+        .then(() => setOpportunities((list) => list.filter((o) => o.id !== id)))
+        .catch(() => undefined)
+    },
     updateProfile: (p) => setUser((u) => (u ? { ...u, ...p } : u)),
     setOnboardingStep: (k, v) => setOnboarding((o) => ({ ...o, [k]: v })),
     addEducation: (e) => setEducation((list) => [...list, { ...e, id: uid() }]),
@@ -785,51 +794,70 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     removeProject: (id) => setProjects((list) => list.filter((x) => x.id !== id)),
     addAchievement: (a) => setAchievements((list) => [...list, { ...a, id: uid() }]),
     removeAchievement: (id) => setAchievements((list) => list.filter((x) => x.id !== id)),
-    addSkill: (s) => setSkills((list) => [...list, { ...s, id: uid() }]),
+    addSkill: (s) => setSkills((list) => [...list, { ...s, id: uid(), verified: false }]),
     removeSkill: (id) => setSkills((list) => list.filter((x) => x.id !== id)),
     loadSample: loadDemoData,
-    setApplication: (opportunityId, status) =>
+    setApplication: (opportunityId, status, coverMessage) => {
       setApplications((list) => {
         const rest = list.filter((a) => a.opportunityId !== opportunityId)
         return [...rest, { opportunityId, status, updatedAt: new Date().toISOString() }]
-      }),
-    postOpportunity: (o) =>
-      setOpportunities((list) => [
-        { ...o, id: uid(), providerId: "me", applicants: 0 },
-        ...list,
-      ]),
-    matchScore: (o) => {
-      // Build a lookup of the user's skills -> proficiency + verification.
-      const byName = new Map<string, Skill>()
-      for (const s of skills) byName.set(s.name.toLowerCase(), s)
-      const cats = new Map<string, Skill>()
-      for (const s of skills) if (!cats.has(s.category.toLowerCase())) cats.set(s.category.toLowerCase(), s)
-      const interests = (user?.interests ?? []).map((i) => i.toLowerCase())
-
-      if (o.skills.length === 0) return 55
-
-      let score = 0
-      for (const req of o.skills) {
-        const l = req.toLowerCase()
-        const direct = byName.get(l)
-        const viaCat = cats.get(l)
-        if (direct) {
-          // 0.55 base for owning it, scaled by proficiency, +bonus if verified.
-          score += 0.55 + (direct.level / 5) * 0.35 + (direct.verified ? 0.1 : 0)
-        } else if (viaCat) {
-          score += 0.4 + (viaCat.level / 5) * 0.2
-        } else if (interests.some((i) => l.includes(i) || i.includes(l))) {
-          score += 0.3
+      })
+      void (async () => {
+        try {
+          if (status === "saved") await apiSaveOpportunity(opportunityId)
+          else if (status === "applied") await apiApply(opportunityId, coverMessage)
+          else if (status === "withdrawn") {
+            const current = applications.find((item) => item.opportunityId === opportunityId)
+            if (current?.id && !current.id.startsWith("saved:")) {
+              await apiUpdateApplication(current.id, "withdrawn")
+            }
+          }
+          const apps = await apiListApplications()
+          setApplications(apps.map(mapApplication))
+        } catch {
+          const apps = await apiListApplications()
+          setApplications(apps.map(mapApplication))
         }
-        // otherwise: a genuine gap, contributes 0
-      }
-      const base = (score / o.skills.length) * 100
-
-      // Interest overlap with the role text nudges it up slightly.
-      const text = `${o.title} ${o.description}`.toLowerCase()
-      const interestBoost = interests.some((i) => text.includes(i)) ? 6 : 0
-
-      return Math.max(18, Math.min(98, Math.round(base + interestBoost)))
+      })()
+    },
+    postOpportunity: (o) => {
+      void apiPublishOpportunity({
+        title: o.title,
+        description: o.description,
+        type: o.type,
+        location: o.location,
+        remote: o.remote,
+        skills: o.skills,
+        deadline: o.deadline,
+        compensation: o.compensation,
+      })
+        .then(async (created) => {
+          if (created) setOpportunities((list) => [mapOpportunity(created), ...list.filter((item) => item.id !== created.id)])
+          else {
+            const listed = await apiListOpportunities({ mine: true })
+            setOpportunities(listed.map(mapOpportunity))
+          }
+        })
+        .catch(() => undefined)
+    },
+    refreshMarketplace: async () => {
+      const [listed, apps] = await Promise.all([
+        loadOpportunities(role),
+        apiListApplications(),
+      ])
+      setOpportunities(listed)
+      setApplications(apps.map(mapApplication))
+    },
+    matchScore: (o) => {
+      if (typeof o.matchScore === "number") return o.matchScore
+      return scoreOpportunityMatch(
+        {
+          skills,
+          interests: user?.interests ?? [],
+          location: user?.location ?? "",
+        },
+        o,
+      )
     },
   }
 
@@ -840,6 +868,8 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     user,
     loggedIn,
     verified,
+    organization,
+    orgBadges,
     onboarding,
     education,
     experiences,
@@ -857,6 +887,46 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
   ])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
+}
+
+async function loadOpportunities(role?: string | null) {
+  const listed = await apiListOpportunities()
+  if (role !== "employer") return listed.map(mapOpportunity)
+  const mine = await apiListOpportunities({ mine: true })
+  const map = new Map(listed.map((item) => [item.id, mapOpportunity(item)]))
+  for (const item of mine) map.set(item.id, mapOpportunity(item))
+  return [...map.values()]
+}
+
+function mapOpportunity(item: ApiOpportunity): Opportunity {
+  return {
+    id: item.id,
+    title: item.title,
+    org: item.org,
+    type: item.type,
+    location: item.location,
+    remote: item.remote,
+    description: item.description,
+    skills: item.skills ?? [],
+    deadline: item.deadline,
+    compensation: item.compensation,
+    organizationId: item.organizationId,
+    providerId: item.organizationId,
+    applicants: item.applicants ?? 0,
+    matchScore: item.matchScore,
+    status: item.status,
+  }
+}
+
+function mapApplication(item: ApiApplication): Application {
+  return {
+    id: item.id,
+    opportunityId: item.opportunityId,
+    status: item.status,
+    updatedAt: item.updatedAt,
+    opportunityTitle: item.opportunityTitle,
+    organizationName: item.organizationName,
+  }
 }
 
 export function usePrototype() {

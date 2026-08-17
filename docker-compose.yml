@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: volunteer
+      POSTGRES_PASSWORD: volunteer
+      POSTGRES_DB: volunteer_connect
+    ports:
+      - "5432:5432"
+    volumes:
+      - volunteer_connect_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U volunteer -d volunteer_connect"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  volunteer_connect_pg:

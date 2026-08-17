@@ -19,13 +19,14 @@ import { AppShell } from "@/components/app-shell"
 import { usePrototype, oppTypeLabel } from "@/components/prototype-store"
 import { Button } from "@/components/ui/button"
 import { ButtonLink } from "@/components/button-link"
+import { OrgTrustBadge } from "@/components/org-badge"
 import { Chip, MatchRing, EmptyState } from "@/components/ui-bits"
 import { Modal } from "@/components/modal"
 
 export default function OpportunityDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
-  const { opportunities, matchScore, skills, applications, setApplication, user } = usePrototype()
+  const { opportunities, matchScore, skills, applications, setApplication, user, orgBadges } = usePrototype()
 
   const opportunity = opportunities.find((o) => o.id === id)
   const [showApply, setShowApply] = useState(false)
@@ -48,7 +49,7 @@ export default function OpportunityDetailsPage({ params }: { params: Promise<{ i
   const score = matchScore(opportunity)
   const status = applications.find((a) => a.opportunityId === opportunity.id)?.status
   const saved = status === "saved"
-  const alreadyApplied = status === "applied" || status === "interview" || status === "offer"
+  const alreadyApplied = Boolean(status && status !== "saved" && status !== "withdrawn" && status !== "rejected")
 
   // Per-skill breakdown: which required skills the user has vs. gaps.
   const mySkills = new Map(skills.map((s) => [s.name.toLowerCase(), s]))
@@ -64,7 +65,7 @@ export default function OpportunityDetailsPage({ params }: { params: Promise<{ i
     .slice(0, 3)
 
   const submit = () => {
-    setApplication(opportunity.id, "applied")
+    setApplication(opportunity.id, "applied", note)
     setApplied(true)
   }
 
@@ -87,7 +88,10 @@ export default function OpportunityDetailsPage({ params }: { params: Promise<{ i
               {alreadyApplied ? <Chip tone="success">{statusLabel(status!)}</Chip> : null}
             </div>
             <h1 className="mt-3 font-display text-2xl font-bold tracking-tight text-balance">{opportunity.title}</h1>
-            <p className="mt-1 text-muted-foreground">{opportunity.org}</p>
+            <p className="mt-1 inline-flex flex-wrap items-center gap-2 text-muted-foreground">
+              {opportunity.org}
+              <OrgTrustBadge status={orgBadges[opportunity.org.toLowerCase()]} />
+            </p>
 
             <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
@@ -311,7 +315,18 @@ export default function OpportunityDetailsPage({ params }: { params: Promise<{ i
 
 function statusLabel(s: string) {
   return (
-    { saved: "Saved", applied: "Applied", interview: "Interview stage", offer: "Offer received", rejected: "Not selected" }[
+    {
+      saved: "Saved",
+      submitted: "Submitted",
+      applied: "Submitted",
+      under_review: "Under review",
+      interview: "Under review",
+      shortlisted: "Shortlisted",
+      accepted: "Accepted",
+      offer: "Accepted",
+      rejected: "Not selected",
+      withdrawn: "Withdrawn",
+    }[
       s
     ] ?? s
   )

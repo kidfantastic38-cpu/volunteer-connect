@@ -110,8 +110,12 @@ export function RadioGroup({
 
 /* -------------------------------- File upload ------------------------------- */
 
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024
+const ALLOWED_EXT = /\.(pdf|jpe?g|png|webp)$/i
+const BLOCKED_EXT = /\.(exe|dll|bat|cmd|sh|ps1|js|mjs|php|html?|svg|xml|vbs|scr|pif|lnk)$/i
+
 export function FileUpload({
-  accept = "PDF, PNG, JPG up to 10MB",
+  accept = "PDF, JPEG, PNG, WebP up to 2MB",
   onFiles,
 }: {
   accept?: string
@@ -120,10 +124,24 @@ export function FileUpload({
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [files, setFiles] = useState<File[]>([])
+  const [error, setError] = useState("")
 
   const addFiles = (list: FileList | null) => {
     if (!list) return
-    const next = [...files, ...Array.from(list)]
+    const incoming = Array.from(list)
+    const rejected = incoming.find(
+      (file) => file.size > MAX_UPLOAD_BYTES || BLOCKED_EXT.test(file.name) || !ALLOWED_EXT.test(file.name),
+    )
+    if (rejected) {
+      setError(
+        rejected.size > MAX_UPLOAD_BYTES
+          ? "Files must be 2MB or smaller."
+          : "Only PDF, JPEG, PNG, and WebP files are allowed.",
+      )
+      return
+    }
+    setError("")
+    const next = [...files, ...incoming]
     setFiles(next)
     onFiles?.(next)
   }
@@ -167,10 +185,12 @@ export function FileUpload({
           ref={inputRef}
           type="file"
           multiple
+          accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
           className="sr-only"
           onChange={(e) => addFiles(e.target.files)}
         />
       </div>
+      {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
 
       {files.length > 0 ? (
         <ul className="space-y-2">

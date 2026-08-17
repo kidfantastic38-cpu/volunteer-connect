@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Search, MapPin, Calendar, Users, Bookmark, BookmarkCheck, Check } from "lucide-react"
+import { Search, MapPin, Calendar, Bookmark, BookmarkCheck, Check } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
 import {
   usePrototype,
@@ -12,13 +12,14 @@ import {
 } from "@/components/prototype-store"
 import { Button } from "@/components/ui/button"
 import { ButtonLink } from "@/components/button-link"
+import { OrgTrustBadge } from "@/components/org-badge"
 import { Chip, MatchRing, EmptyState } from "@/components/ui-bits"
 import { Modal } from "@/components/modal"
 
 const FILTERS: (OppType | "all")[] = ["all", "job", "internship", "scholarship", "volunteering", "training"]
 
 export default function OpportunitiesPage() {
-  const { opportunities, matchScore, applications, setApplication } = usePrototype()
+  const { opportunities, matchScore, applications, setApplication, orgBadges } = usePrototype()
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<OppType | "all">("all")
   const [selected, setSelected] = useState<Opportunity | null>(null)
@@ -98,7 +99,10 @@ export default function OpportunitiesPage() {
                     <h3 className="mt-2 font-display text-lg font-semibold text-card-foreground text-balance">
                       {o.title}
                     </h3>
-                    <p className="text-sm text-muted-foreground">{o.org}</p>
+                    <p className="inline-flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                      {o.org}
+                      <OrgTrustBadge status={orgBadges[o.org.toLowerCase()]} />
+                    </p>
                   </div>
                   <MatchRing value={score} />
                 </div>
@@ -125,7 +129,7 @@ export default function OpportunitiesPage() {
 
                 <div className="mt-4 flex items-center gap-2 border-t border-border pt-4">
                   <ButtonLink href={`/opportunities/${o.id}`} size="sm" className="flex-1 justify-center">
-                    {status === "applied" || status === "interview" || status === "offer" ? "View application" : "View details"}
+                    {status && status !== "saved" && status !== "withdrawn" && status !== "rejected" ? "View application" : "View details"}
                   </ButtonLink>
                   <Button size="sm" variant="outline" onClick={() => setSelected(o)}>
                     Quick apply
@@ -160,7 +164,18 @@ export default function OpportunitiesPage() {
 }
 
 function statusLabel(s: ApplicationStatus) {
-  return { saved: "Saved", applied: "Applied", interview: "Interview stage", offer: "Offer received", rejected: "Not selected" }[s]
+  return {
+    saved: "Saved",
+    submitted: "Submitted",
+    applied: "Submitted",
+    under_review: "Under review",
+    interview: "Under review",
+    shortlisted: "Shortlisted",
+    accepted: "Accepted",
+    offer: "Accepted",
+    rejected: "Not selected",
+    withdrawn: "Withdrawn",
+  }[s]
 }
 
 function ApplyModal({ opportunity, onClose }: { opportunity: Opportunity | null; onClose: () => void }) {
@@ -171,10 +186,10 @@ function ApplyModal({ opportunity, onClose }: { opportunity: Opportunity | null;
   if (!opportunity) return null
   const score = matchScore(opportunity)
   const status = applications.find((a) => a.opportunityId === opportunity.id)?.status
-  const alreadyApplied = status === "applied" || status === "interview" || status === "offer"
+  const alreadyApplied = Boolean(status && status !== "saved" && status !== "withdrawn" && status !== "rejected")
 
   const apply = () => {
-    setApplication(opportunity.id, "applied")
+    setApplication(opportunity.id, "applied", note)
     setDone(true)
   }
 

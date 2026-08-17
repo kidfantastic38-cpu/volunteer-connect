@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { Download, Printer, Sparkles } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
 import { usePrototype, experienceTypeLabel, type CvTemplate } from "@/components/prototype-store"
@@ -13,6 +14,7 @@ const templateMeta: Record<CvTemplate, { label: string; hint: string }> = {
 }
 
 export default function CvPage() {
+  const router = useRouter()
   const { user, education, experiences, projects, achievements, skills, cvTemplate, setCvTemplate } = usePrototype()
   const template = cvTemplate
 
@@ -60,7 +62,7 @@ export default function CvPage() {
           title="Nothing to build yet"
           description="Add experiences, projects and achievements to your profile and your CV will generate automatically."
           action={
-            <Button onClick={() => (window.location.href = "/profile")}>Go to profile</Button>
+            <Button onClick={() => router.push("/profile")}>Go to profile</Button>
           }
         />
       ) : (

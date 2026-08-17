@@ -1,6 +1,8 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto"
 
 const KEYLEN = 64
+export const MIN_PASSWORD_LENGTH = 6
+export const MAX_PASSWORD_LENGTH = 128
 
 /** Store format: scrypt$<saltHex>$<hashHex> */
 export function hashPassword(password: string): string {

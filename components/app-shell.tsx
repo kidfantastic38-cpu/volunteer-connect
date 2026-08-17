@@ -8,6 +8,7 @@ import {
   Briefcase,
   Compass,
   FileText,
+  Building2,
   FolderTree,
   Gauge,
   HelpCircle,
@@ -44,6 +45,7 @@ const studentFooterNav = [
 
 const employerNav = [
   { href: "/employer", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/employer/organization", label: "Organization", icon: Building2 },
   { href: "/employer/post", label: "Post Opportunity", icon: Briefcase },
   { href: "/employer/candidates", label: "Candidates", icon: Users },
 ]
@@ -56,6 +58,7 @@ const employerFooterNav = [
 const adminNav = [
   { href: "/admin", label: "Overview", icon: Gauge },
   { href: "/admin/users", label: "User Management", icon: Users },
+  { href: "/admin/employers", label: "Employer Verification", icon: Building2 },
   { href: "/admin/opportunities", label: "Opportunities", icon: Briefcase },
   { href: "/admin/categories", label: "Categories & Skills", icon: FolderTree },
 ]

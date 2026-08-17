@@ -13,3 +13,7 @@ data/*.sqlite-journal
 data/*.sqlite-wal
 data/*.sqlite-shm
 data/.auth-secret
+data/uploads/
+data/pglite/
+.vercel
+.env*

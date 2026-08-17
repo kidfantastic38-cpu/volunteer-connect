@@ -2,16 +2,23 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto"
 import fs from "node:fs"
 import path from "node:path"
 import { cookies } from "next/headers"
+import { getSessionVersion } from "@/lib/auth/db"
 import { resolveDataDir } from "@/lib/auth/paths"
 import type { AuthSessionPayload, AuthUser } from "@/lib/auth/types"
+import { isProductionRuntime } from "@/lib/runtime/env"
 
 export const SESSION_COOKIE = "vc_session"
 const SESSION_DAYS = 30
 
 function secret(): string {
-  if (process.env.AUTH_SECRET && process.env.AUTH_SECRET.length >= 16) {
-    return process.env.AUTH_SECRET
+  const fromEnv = process.env.AUTH_SECRET?.trim()
+  if (isProductionRuntime()) {
+    if (!fromEnv || fromEnv.length < 32) {
+      throw new Error("AUTH_SECRET must be a long random string (32+ characters) in production.")
+    }
+    return fromEnv
   }
+  if (fromEnv && fromEnv.length >= 16) return fromEnv
   const dir = resolveDataDir()
   const file = path.join(dir, ".auth-secret")
   try {
@@ -29,12 +36,13 @@ function sign(payload: string): string {
   return createHmac("sha256", secret()).update(payload).digest("base64url")
 }
 
-export function encodeSession(user: AuthUser): string {
+export function encodeSession(user: AuthUser, sessionVersion = 1): string {
   const body: AuthSessionPayload = {
     sub: user.id,
     email: user.email,
     role: user.role,
     exp: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000,
+    sv: sessionVersion,
   }
   const payload = Buffer.from(JSON.stringify(body)).toString("base64url")
   return `${payload}.${sign(payload)}`
@@ -59,7 +67,8 @@ export function decodeSession(token: string | undefined | null): AuthSessionPayl
 
 export async function setSessionCookie(user: AuthUser) {
   const jar = await cookies()
-  jar.set(SESSION_COOKIE, encodeSession(user), {
+  const sv = (await getSessionVersion(user.id)) ?? 1
+  jar.set(SESSION_COOKIE, encodeSession(user, sv), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -75,5 +84,10 @@ export async function clearSessionCookie() {
 
 export async function readSession(): Promise<AuthSessionPayload | null> {
   const jar = await cookies()
-  return decodeSession(jar.get(SESSION_COOKIE)?.value)
+  const data = decodeSession(jar.get(SESSION_COOKIE)?.value)
+  if (!data) return null
+  const version = await getSessionVersion(data.sub)
+  if (version === null) return null
+  if ((data.sv ?? 1) !== version) return null
+  return data
 }

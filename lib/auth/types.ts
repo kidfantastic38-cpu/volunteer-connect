@@ -5,6 +5,7 @@ export type AuthUser = {
   email: string
   name: string
   role: AuthRole
+  emailVerified: boolean
 }
 
 export type ProfileSnapshot = {
@@ -45,4 +46,5 @@ export type AuthSessionPayload = {
   email: string
   role: AuthRole
   exp: number
+  sv?: number
 }

@@ -4,7 +4,7 @@ import { Check, ExternalLink, Globe, Rocket } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
 import { ButtonLink } from "@/components/button-link"
 import { usePrototype, type PortfolioTheme, type Visibility } from "@/components/prototype-store"
-import { Field, TextInput, TextArea, Toggle } from "@/components/form-controls"
+import { Field, TextArea, Toggle } from "@/components/form-controls"
 import { Button } from "@/components/ui/button"
 import { Chip } from "@/components/ui-bits"
 

@@ -519,7 +519,15 @@ export function SkillSection() {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium text-card-foreground">{s.name}</p>
-                  {s.verified ? <VerifiedBadge /> : <Chip tone="muted">Self-assessed</Chip>}
+                  {s.verified ? (
+                    <VerifiedBadge label="Officially verified" />
+                  ) : s.evidenceBacked ? (
+                    <Chip tone="success">Evidence-backed</Chip>
+                  ) : s.source && s.source !== "Self-assessed" ? (
+                    <Chip tone="muted">Experience-backed</Chip>
+                  ) : (
+                    <Chip tone="muted">Self-assessed</Chip>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground">{s.category} · from {s.source}</p>
                 <div className="mt-2 flex items-center gap-1" aria-label={`Proficiency ${s.level} of 5`}>

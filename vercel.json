@@ -1,0 +1,5 @@
+{
+  "framework": "nextjs",
+  "installCommand": "corepack enable && corepack pnpm install --frozen-lockfile --config.strict-dep-builds=false",
+  "buildCommand": "next build"
+}

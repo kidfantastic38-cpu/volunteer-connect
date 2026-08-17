@@ -17,7 +17,7 @@ export default function AdminOverviewPage() {
   const recent = [...adminUsers].slice(-4).reverse()
 
   return (
-    <AppShell>
+    <AppShell requiredRole="admin">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold tracking-tight">Platform overview</h1>
         <p className="text-sm text-muted-foreground">A snapshot of activity across VolunteerConnect.</p>
@@ -34,9 +34,14 @@ export default function AdminOverviewPage() {
         <section className="rounded-2xl border border-border bg-card p-6 lg:col-span-2">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-semibold">Recent sign-ups</h2>
-            <ButtonLink href="/admin/users" variant="ghost" size="sm">
-              View all
-            </ButtonLink>
+            <div className="flex gap-2">
+              <ButtonLink href="/admin/employers" variant="ghost" size="sm">
+                Verify employers
+              </ButtonLink>
+              <ButtonLink href="/admin/users" variant="ghost" size="sm">
+                View all
+              </ButtonLink>
+            </div>
           </div>
           <div className="mt-4 divide-y divide-border">
             {recent.map((u) => (

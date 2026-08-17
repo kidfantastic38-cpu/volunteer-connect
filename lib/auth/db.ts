@@ -1,184 +1,161 @@
 import { randomUUID } from "node:crypto"
-import fs from "node:fs"
-import { DatabaseSync } from "node:sqlite"
+import { eq, sql } from "drizzle-orm"
 import { amaraDemoSnapshot, defaultProfileSnapshot } from "@/lib/auth/defaults"
 import { hashPassword } from "@/lib/auth/password"
 import { normalizeEmail } from "@/lib/auth/normalize"
-import { getDatabasePath, resolveDataDir } from "@/lib/auth/paths"
 import type { AuthRole, AuthUser, ProfileSnapshot } from "@/lib/auth/types"
+import { getDb } from "@/lib/db/client"
+import { users } from "@/lib/db/schema"
+import { assembleProfileSnapshot, persistProfileSnapshot } from "@/lib/profile/persist"
+import { createOrganization, findOrganizationByOwner } from "@/lib/org/db"
+import type { Organization, OrganizationInput } from "@/lib/org/types"
 
-type UserRow = {
-  id: string
-  email: string
-  password_hash: string
-  name: string
-  role: string
-}
-
-let db: DatabaseSync | null = null
-let loggedPath = false
-
-export { getDatabasePath }
-
-function getDb(): DatabaseSync {
-  if (db) return db
-  const dataDir = resolveDataDir()
-  fs.mkdirSync(dataDir, { recursive: true })
-  const file = getDatabasePath()
-  db = new DatabaseSync(file)
-  db.exec("PRAGMA journal_mode = WAL;")
-  db.exec("PRAGMA foreign_keys = ON;")
-  db.exec("PRAGMA synchronous = FULL;")
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      name TEXT NOT NULL,
-      role TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS profiles (
-      user_id TEXT PRIMARY KEY,
-      snapshot TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
-  `)
-  seedDemoUsers()
-  if (!loggedPath) {
-    loggedPath = true
-    console.info(`[auth] SQLite ${file}`)
-  }
-  return db
-}
-
-function seedDemoUsers() {
-  const exists = getDb().prepare("SELECT id FROM users WHERE email = ?")
-  const insert = getDb().prepare(
-    `INSERT INTO users (id, email, password_hash, name, role, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  )
-  const now = new Date().toISOString()
-  const seeds: [string, string, string, AuthRole][] = [
-    ["user-amara", "amara@example.com", "Amara Okafor", "student"],
-    ["user-admin", "admin@volunteerconnect.org", "Platform Admin", "admin"],
-  ]
-  for (const [id, email, name, role] of seeds) {
-    if (!exists.get(email)) {
-      insert.run(id, email, hashPassword("password"), name, role, now, now)
-    }
-    const snapshot = email === "amara@example.com" ? amaraDemoSnapshot() : defaultProfileSnapshot({ id, email, name, role })
-    const current = getProfileSnapshot(id)
-    const empty = !current || ((current.experiences?.length ?? 0) === 0 && (current.education?.length ?? 0) === 0)
-    if (!current || (email === "amara@example.com" && empty)) {
-      saveProfileSnapshot(id, snapshot)
-    }
-  }
-}
-
-function toUser(row: UserRow): AuthUser {
+function toUser(row: typeof users.$inferSelect): AuthUser {
   return {
     id: row.id,
     email: row.email,
     name: row.name,
     role: row.role as AuthRole,
+    emailVerified: Boolean(row.emailVerified),
   }
 }
 
-export function findUserByEmail(email: string): (AuthUser & { passwordHash: string }) | null {
-  const row = getDb()
-    .prepare("SELECT id, email, password_hash, name, role FROM users WHERE email = ?")
-    .get(normalizeEmail(email)) as UserRow | undefined
-  if (!row) return null
-  return { ...toUser(row), passwordHash: row.password_hash }
+export function getAuthDb() {
+  return getDb()
 }
 
-export function findUserById(id: string): AuthUser | null {
-  const row = getDb()
-    .prepare("SELECT id, email, password_hash, name, role FROM users WHERE id = ?")
-    .get(id) as UserRow | undefined
+export function getDatabasePath() {
+  return process.env.DATABASE_URL ? "postgres" : "unset"
+}
+
+export async function findUserByEmail(email: string): Promise<(AuthUser & { passwordHash: string }) | null> {
+  const [row] = await getDb().select().from(users).where(eq(users.email, normalizeEmail(email))).limit(1)
+  if (!row) return null
+  return { ...toUser(row), passwordHash: row.passwordHash }
+}
+
+export async function findUserById(id: string): Promise<AuthUser | null> {
+  const [row] = await getDb().select().from(users).where(eq(users.id, id)).limit(1)
   return row ? toUser(row) : null
 }
 
-export function createUser(input: {
+export async function createUser(input: {
   name: string
   email: string
   password: string
   role: AuthRole
-}): { user: AuthUser; snapshot: ProfileSnapshot } {
+  organization?: OrganizationInput
+}): Promise<{ user: AuthUser; snapshot: ProfileSnapshot; organization: Organization | null }> {
   const id = randomUUID()
-  const now = new Date().toISOString()
+  const stamp = new Date().toISOString()
   const email = normalizeEmail(input.email)
   const name = input.name.trim()
-  const passwordHash = hashPassword(input.password)
-  const database = getDb()
+  await getDb().insert(users).values({
+    id,
+    email,
+    passwordHash: hashPassword(input.password),
+    name,
+    role: input.role,
+    emailVerified: false,
+    sessionVersion: 1,
+    createdAt: stamp,
+    updatedAt: stamp,
+  })
+  const user = { id, email, name, role: input.role, emailVerified: false }
+  const snapshot = defaultProfileSnapshot(user)
+  await persistProfileSnapshot(id, snapshot)
+  const organization =
+    input.role === "employer" && input.organization ? await createOrganization(id, input.organization) : null
+  return { user, snapshot, organization }
+}
 
-  const insertUser = database.prepare(
-    `INSERT INTO users (id, email, password_hash, name, role, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  )
-  const verifyUser = database.prepare("SELECT id, email, password_hash, name, role FROM users WHERE email = ?")
-  const insertProfile = database.prepare(
-    `INSERT INTO profiles (user_id, snapshot, updated_at) VALUES (?, ?, ?)`,
-  )
+export async function setEmailVerified(id: string, verified = true) {
+  await getDb()
+    .update(users)
+    .set({ emailVerified: verified, updatedAt: new Date().toISOString() })
+    .where(eq(users.id, id))
+}
 
-  database.exec("BEGIN IMMEDIATE")
-  try {
-    insertUser.run(id, email, passwordHash, name, input.role, now, now)
-    const row = verifyUser.get(email) as UserRow | undefined
-    if (!row || row.id !== id) {
-      throw new Error("Registration did not write to the users table.")
+export async function updateUserPassword(id: string, password: string) {
+  await getDb()
+    .update(users)
+    .set({ passwordHash: hashPassword(password), updatedAt: new Date().toISOString() })
+    .where(eq(users.id, id))
+}
+
+export async function getSessionVersion(id: string): Promise<number | null> {
+  const [row] = await getDb().select({ sessionVersion: users.sessionVersion }).from(users).where(eq(users.id, id)).limit(1)
+  return row ? row.sessionVersion : null
+}
+
+export async function incrementSessionVersion(id: string): Promise<number> {
+  await getDb()
+    .update(users)
+    .set({ sessionVersion: sql`${users.sessionVersion} + 1`, updatedAt: new Date().toISOString() })
+    .where(eq(users.id, id))
+  return (await getSessionVersion(id)) ?? 1
+}
+
+export async function updateUserName(id: string, name: string) {
+  await getDb().update(users).set({ name: name.trim(), updatedAt: new Date().toISOString() }).where(eq(users.id, id))
+}
+
+export async function getProfileSnapshot(userId: string): Promise<ProfileSnapshot | null> {
+  const user = await findUserById(userId)
+  if (!user) return null
+  return assembleProfileSnapshot(user)
+}
+
+export async function saveProfileSnapshot(userId: string, snapshot: ProfileSnapshot) {
+  await persistProfileSnapshot(userId, snapshot)
+}
+
+export async function seedDemoUsers() {
+  const stamp = new Date().toISOString()
+  const seeds: [string, string, string, AuthRole][] = [
+    ["user-amara", "amara@example.com", "Amara Okafor", "student"],
+    ["user-admin", "admin@volunteerconnect.org", "Platform Admin", "admin"],
+    ["user-earthwise", "hello@earthwise.org", "EarthWise Foundation", "employer"],
+  ]
+  for (const [id, email, name, role] of seeds) {
+    const existing = await findUserByEmail(email)
+    if (!existing) {
+      await getDb().insert(users).values({
+        id,
+        email,
+        passwordHash: hashPassword("password"),
+        name,
+        role,
+        emailVerified: true,
+        sessionVersion: 1,
+        createdAt: stamp,
+        updatedAt: stamp,
+      })
     }
-    const user = toUser(row)
-    const snapshot = defaultProfileSnapshot(user)
-    insertProfile.run(id, JSON.stringify(snapshot), now)
-    database.exec("COMMIT")
-  } catch (err) {
-    if (database.isTransaction) database.exec("ROLLBACK")
-    throw err
+    const user = (await findUserById(existing?.id ?? id)) ?? {
+      id,
+      email,
+      name,
+      role,
+      emailVerified: true,
+    }
+    const current = await assembleProfileSnapshot(user)
+    const empty = !current || ((current.experiences?.length ?? 0) === 0 && (current.education?.length ?? 0) === 0)
+    if (!current || (email === "amara@example.com" && empty)) {
+      await persistProfileSnapshot(user.id, email === "amara@example.com" ? amaraDemoSnapshot() : defaultProfileSnapshot(user))
+    }
+    await setEmailVerified(user.id, true)
   }
-
-  const confirmed = verifyUser.get(email) as UserRow | undefined
-  if (!confirmed || confirmed.id !== id) {
-    throw new Error("Registration did not commit to the users table.")
+  const owner = await findUserByEmail("hello@earthwise.org")
+  if (owner && !(await findOrganizationByOwner(owner.id))) {
+    await createOrganization(owner.id, {
+      name: "EarthWise Foundation",
+      organizationType: "NGO",
+      organizationEmail: "hello@earthwise.org",
+      phone: "+44 161 000 0000",
+      website: "https://earthwise.example",
+      registrationNumber: "REG-EW-1042",
+      address: "Manchester, UK",
+    })
   }
-  const user = toUser(confirmed)
-  const snapshot = getProfileSnapshot(id) ?? defaultProfileSnapshot(user)
-  return { user, snapshot }
-}
-
-export function updateUserPassword(id: string, password: string) {
-  getDb()
-    .prepare("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?")
-    .run(hashPassword(password), new Date().toISOString(), id)
-}
-
-export function updateUserName(id: string, name: string) {
-  getDb()
-    .prepare("UPDATE users SET name = ?, updated_at = ? WHERE id = ?")
-    .run(name.trim(), new Date().toISOString(), id)
-}
-
-export function getProfileSnapshot(userId: string): ProfileSnapshot | null {
-  const row = getDb().prepare("SELECT snapshot FROM profiles WHERE user_id = ?").get(userId) as
-    | { snapshot: string }
-    | undefined
-  if (!row) return null
-  try {
-    return JSON.parse(row.snapshot) as ProfileSnapshot
-  } catch {
-    return null
-  }
-}
-
-export function saveProfileSnapshot(userId: string, snapshot: ProfileSnapshot) {
-  const now = new Date().toISOString()
-  getDb()
-    .prepare(
-      `INSERT INTO profiles (user_id, snapshot, updated_at) VALUES (?, ?, ?)
-       ON CONFLICT(user_id) DO UPDATE SET snapshot = excluded.snapshot, updated_at = excluded.updated_at`,
-    )
-    .run(userId, JSON.stringify(snapshot), now)
 }

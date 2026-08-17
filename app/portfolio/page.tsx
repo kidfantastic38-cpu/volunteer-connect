@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import { ArrowLeft, Share2, Check, MapPin, ExternalLink, Pencil, EyeOff, Mail } from "lucide-react"
 import { usePrototype, experienceTypeLabel, type PortfolioTheme } from "@/components/prototype-store"
 import { Button } from "@/components/ui/button"
@@ -21,7 +20,10 @@ export default function PortfolioPage() {
   const theme = themeAccent[portfolio.theme]
 
   const share = async () => {
-    const url = typeof window !== "undefined" ? window.location.href : ""
+    const url =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/p/${portfolio.slug || "portfolio"}`
+        : ""
     try {
       await navigator.clipboard.writeText(url)
     } catch {

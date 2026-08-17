@@ -6,6 +6,7 @@ import { CheckCircle2, Loader2, MailCheck, RefreshCw } from "lucide-react"
 import { AuthShell } from "@/components/auth-shell"
 import { Button } from "@/components/ui/button"
 import { usePrototype } from "@/components/prototype-store"
+import { apiSendVerifyEmail } from "@/lib/auth/client"
 import { cn } from "@/lib/utils"
 
 const DEMO_CODE = "481920"
@@ -61,22 +62,23 @@ function VerifyForm() {
       return
     }
     setStatus("checking")
-    setTimeout(() => {
-      // Accept the demo code, or any code ending in an even digit to keep the prototype forgiving.
-      if (code === DEMO_CODE || Number(code[5]) % 2 === 0) {
-        verifyAccount()
+    void verifyAccount(code)
+      .then(() => {
         setStatus("done")
-        setTimeout(() => router.push(next), 900)
-      } else {
+        setTimeout(() => router.push(next), 1100)
+      })
+      .catch((err: unknown) => {
         setStatus("idle")
-        setError("That code doesn't match. Check the demo code below and try again.")
-      }
-    }, 700)
+        setError(err instanceof Error ? err.message : "Could not verify your email.")
+      })
   }
 
   const resend = () => {
     setResent(true)
     setSeconds(30)
+    void apiSendVerifyEmail().catch(() => {
+      setError("Could not resend a code right now.")
+    })
     setTimeout(() => setResent(false), 2500)
   }
 
@@ -86,8 +88,12 @@ function VerifyForm() {
         <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-success/15 text-success">
           <CheckCircle2 className="size-7" aria-hidden="true" />
         </div>
-        <h1 className="font-display text-2xl font-bold tracking-tight">Account verified</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Taking you to the next step…</p>
+        <h1 className="font-display text-2xl font-bold tracking-tight">Email Verified</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {role === "employer"
+            ? "Your email is confirmed. An admin still needs to approve your organization before you can post opportunities."
+            : "Taking you to the next step…"}
+        </p>
       </div>
     )
   }
@@ -152,9 +158,11 @@ function VerifyForm() {
         </button>
       </div>
 
-      <p className="mt-6 rounded-lg bg-muted px-3 py-2 text-center text-xs text-muted-foreground">
-        Demo code: <span className="font-semibold tracking-widest text-foreground">{DEMO_CODE}</span>
-      </p>
+      {process.env.NODE_ENV !== "production" ? (
+        <p className="mt-6 rounded-lg bg-muted px-3 py-2 text-center text-xs text-muted-foreground">
+          Demo code: <span className="font-semibold tracking-widest text-foreground">{DEMO_CODE}</span>
+        </p>
+      ) : null}
     </div>
   )
 }

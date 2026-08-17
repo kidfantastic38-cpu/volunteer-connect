@@ -3,18 +3,24 @@
 import { Briefcase } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
 import { ButtonLink } from "@/components/button-link"
+import { Button } from "@/components/ui/button"
 import { usePrototype, oppTypeLabel, type ApplicationStatus } from "@/components/prototype-store"
 import { Chip, EmptyState } from "@/components/ui-bits"
+import { apiWithdrawApplication } from "@/lib/auth/client"
 
-const COLUMNS: { key: ApplicationStatus; label: string; tone: "muted" | "primary" | "accent" | "success" }[] = [
-  { key: "saved", label: "Saved", tone: "muted" },
-  { key: "applied", label: "Applied", tone: "primary" },
-  { key: "interview", label: "Interview", tone: "accent" },
-  { key: "offer", label: "Offer", tone: "success" },
+const COLUMNS: { keys: ApplicationStatus[]; label: string; tone: "muted" | "primary" | "accent" | "success" }[] = [
+  { keys: ["saved"], label: "Saved", tone: "muted" },
+  { keys: ["submitted", "applied"], label: "Submitted", tone: "primary" },
+  { keys: ["under_review", "interview", "shortlisted"], label: "In review", tone: "accent" },
+  { keys: ["accepted", "offer"], label: "Accepted", tone: "success" },
 ]
 
+function canWithdraw(status: ApplicationStatus) {
+  return status === "submitted" || status === "applied" || status === "under_review" || status === "interview" || status === "shortlisted"
+}
+
 export default function ApplicationsPage() {
-  const { applications, opportunities } = usePrototype()
+  const { applications, opportunities, refreshMarketplace } = usePrototype()
 
   const oppById = (id: string) => opportunities.find((o) => o.id === id)
 
@@ -36,14 +42,14 @@ export default function ApplicationsPage() {
     <AppShell>
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-foreground">Applications</h1>
-        <p className="text-sm text-muted-foreground">Track every opportunity from saved to offer.</p>
+        <p className="text-sm text-muted-foreground">Track every opportunity from saved to accepted. Status comes from the server.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {COLUMNS.map((col) => {
-          const items = applications.filter((a) => a.status === col.key)
+          const items = applications.filter((a) => col.keys.includes(a.status))
           return (
-            <div key={col.key} className="rounded-2xl border border-border bg-secondary/30 p-3">
+            <div key={col.label} className="rounded-2xl border border-border bg-secondary/30 p-3">
               <div className="mb-3 flex items-center justify-between px-1">
                 <span className="text-sm font-semibold text-foreground">{col.label}</span>
                 <Chip tone={col.tone}>{items.length}</Chip>
@@ -54,13 +60,25 @@ export default function ApplicationsPage() {
                 ) : (
                   items.map((a) => {
                     const o = oppById(a.opportunityId)
-                    if (!o) return null
+                    const title = o?.title || a.opportunityTitle || "Opportunity"
+                    const org = o?.org || a.organizationName || ""
                     return (
-                      <div key={a.opportunityId} className="rounded-xl border border-border bg-card p-3">
-                        <p className="text-sm font-medium text-card-foreground text-pretty">{o.title}</p>
-                        <p className="text-xs text-muted-foreground">{o.org}</p>
-                        <div className="mt-2">
-                          <Chip tone="muted">{oppTypeLabel[o.type]}</Chip>
+                      <div key={a.id || a.opportunityId} className="rounded-xl border border-border bg-card p-3">
+                        <p className="text-sm font-medium text-card-foreground text-pretty">{title}</p>
+                        <p className="text-xs text-muted-foreground">{org}</p>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <Chip tone="muted">{o ? oppTypeLabel[o.type] : a.status}</Chip>
+                          {a.id && !a.id.startsWith("saved:") && canWithdraw(a.status) ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                void apiWithdrawApplication(a.id!).then(() => refreshMarketplace())
+                              }}
+                            >
+                              Withdraw
+                            </Button>
+                          ) : null}
                         </div>
                       </div>
                     )

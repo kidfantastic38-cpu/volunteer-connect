@@ -1,0 +1,3 @@
+ALTER TABLE rate_limits ALTER COLUMN window_start TYPE BIGINT;
+ALTER TABLE email_codes ALTER COLUMN expires_at TYPE BIGINT;
+ALTER TABLE email_codes ALTER COLUMN created_at TYPE BIGINT;

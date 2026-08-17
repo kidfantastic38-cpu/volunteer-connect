@@ -38,7 +38,7 @@ export function defaultProfileSnapshot(account: AuthUser): ProfileSnapshot {
       theme: "aurora",
       slug: account.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "my-portfolio",
       visibility: "unlisted",
-      showContact: true,
+      showContact: false,
       showEvidence: true,
       tagline: "",
     },

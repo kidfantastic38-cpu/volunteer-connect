@@ -38,7 +38,7 @@ export default function AdminUsersPage() {
   const filters: StatusFilter[] = ["all", "active", "pending", "suspended"]
 
   return (
-    <AppShell>
+    <AppShell requiredRole="admin">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold tracking-tight">User management</h1>
         <p className="text-sm text-muted-foreground">Approve, suspend and review platform members.</p>
