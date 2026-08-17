@@ -432,12 +432,26 @@ async function runHttpTests(ctx) {
   })
   record("student cannot call Admin user-management APIs", studentUserPatch.status === 403)
 
+  const studentPromote = await req(`/api/admin/users/${studentBody.user?.id || "missing"}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", cookie: studentCookie },
+    body: JSON.stringify({ role: "admin", isAdmin: true, verificationStatus: "approved" }),
+  })
+  record("student cannot self-promote to admin", studentPromote.status === 403)
+
   const employerUserPatch = await req(`/api/admin/users/${studentBody.user?.id || "missing"}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", cookie: employerCookie },
     body: JSON.stringify({ status: "suspended" }),
   })
   record("employer cannot call Admin user-management APIs", employerUserPatch.status === 403)
+
+  const employerPromote = await req(`/api/admin/users/${studentBody.user?.id || "missing"}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", cookie: employerCookie },
+    body: JSON.stringify({ role: "admin", isAdmin: true }),
+  })
+  record("employer cannot promote a user to admin", employerPromote.status === 403)
 
   const orgPut = await req("/api/org", {
     method: "PUT",
@@ -658,6 +672,12 @@ async function runHttpTests(ctx) {
     headers: { "Content-Type": "application/json", cookie: adminCookie },
     body: JSON.stringify({ status: "active" }),
   })
+  const roleNoConfirm = await req(`/api/admin/users/${otherStudentId || "missing"}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", cookie: adminCookie },
+    body: JSON.stringify({ role: "admin", isAdmin: true, passwordHash: "ignore", confirmRoleChange: false }),
+  })
+  record("admin role change requires confirmation", roleNoConfirm.status === 400, `status ${roleNoConfirm.status}`)
   const otherStudentLogin = await req("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -59,6 +59,7 @@ export async function createUser(input: {
     role: input.role,
     emailVerified: false,
     sessionVersion: 1,
+    status: "active",
     createdAt: stamp,
     updatedAt: stamp,
   })

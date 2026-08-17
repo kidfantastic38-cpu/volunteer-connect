@@ -119,10 +119,13 @@ export async function listAdminUsers(input: { query?: string; role?: string; sta
 export async function updateAdminUser(
   actorId: string,
   userId: string,
-  patch: { status?: string; role?: AuthRole },
+  patch: { status?: string; role?: AuthRole; confirmRoleChange?: boolean },
 ) {
   const [current] = await getDb().select().from(users).where(eq(users.id, userId)).limit(1)
   if (!current) return null
+  if (patch.role && patch.role !== current.role && patch.confirmRoleChange !== true) {
+    throw new Error("Role changes require confirmRoleChange: true.")
+  }
   if (current.role === "admin" && actorId === userId && patch.role && patch.role !== "admin") {
     throw new Error("You cannot change your own admin role.")
   }

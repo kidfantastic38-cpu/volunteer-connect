@@ -13,14 +13,18 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const limited = await enforceRateLimit(rateLimitKey(req, "admin-users", admin.id), 40, 15 * 60 * 1000)
   if (limited) return limited
   const { id } = await ctx.params
-  let body: { status?: string; role?: AuthRole }
+  let body: { status?: unknown; role?: unknown; confirmRoleChange?: unknown }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 })
   }
+  const patch: { status?: string; role?: AuthRole; confirmRoleChange?: boolean } = {}
+  if (typeof body.status === "string") patch.status = body.status
+  if (body.role === "student" || body.role === "employer" || body.role === "admin") patch.role = body.role
+  if (body.confirmRoleChange === true) patch.confirmRoleChange = true
   try {
-    const user = await updateAdminUser(admin.id, id, body)
+    const user = await updateAdminUser(admin.id, id, patch)
     if (!user) return NextResponse.json({ error: "User not found." }, { status: 404 })
     return NextResponse.json({ user })
   } catch (err) {

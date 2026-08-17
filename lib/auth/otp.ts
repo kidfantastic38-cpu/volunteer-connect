@@ -24,8 +24,8 @@ function hashCode(userId: string, code: string): string {
   return createHmac("sha256", otpSecret()).update(`${userId}:${code}`).digest("hex")
 }
 
-export async function issueEmailCode(userId: string): Promise<{ expiresAt: number; demo: boolean }> {
-  const demo = allowDemoOtp()
+export async function issueEmailCode(userId: string, options?: { forceEmail?: boolean }): Promise<{ expiresAt: number; demo: boolean }> {
+  const demo = options?.forceEmail ? false : allowDemoOtp()
   const code = demo ? DEMO_EMAIL_CODE : String(randomInt(100000, 1000000))
   const createdAt = Math.floor(Date.now() / 1000)
   const expiresAt = createdAt + Math.floor(TTL_MS / 1000)
