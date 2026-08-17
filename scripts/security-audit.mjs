@@ -231,6 +231,64 @@ async function runHttpTests(ctx) {
   }
   record("application reachable", health.status < 500)
 
+  const loginHtml = await health.text()
+  record(
+    "login page does not expose an unauthenticated admin shortcut",
+    !loginHtml.includes("Enter the admin console") && !loginHtml.includes("Access Admin Console"),
+  )
+
+  const anonDash = await req("/admin/dashboard")
+  const anonDashLoc = anonDash.headers.get("location") || ""
+  record("anonymous cannot access /admin/dashboard", anonDash.status === 307 || anonDash.status === 302, `status ${anonDash.status}`)
+  record("anonymous admin dashboard redirects to login", anonDashLoc.includes("/login") && !anonDashLoc.includes("/admin/dashboard"))
+
+  const anonAdminApis = [
+    "/api/admin/stats",
+    "/api/admin/users",
+    "/api/admin/employers",
+    "/api/admin/verifications",
+    "/api/admin/opportunities",
+    "/api/admin/applications",
+    "/api/admin/skills",
+    "/api/admin/uploads",
+    "/api/admin/portfolios",
+    "/api/admin/reports",
+    "/api/admin/notifications",
+    "/api/admin/settings",
+  ]
+  for (const path of anonAdminApis) {
+    const res = await req(path)
+    const body = await json(res)
+    const leaked =
+      Boolean(body.stats) ||
+      Boolean(body.users) ||
+      Boolean(body.employers) ||
+      Boolean(body.requests) ||
+      Boolean(body.opportunities) ||
+      Boolean(body.applications) ||
+      Boolean(body.skills) ||
+      Boolean(body.uploads) ||
+      Boolean(body.portfolios) ||
+      Boolean(body.reports) ||
+      Boolean(body.notifications) ||
+      Boolean(body.settings)
+    const blocked = res.status === 401 || res.status === 403 || res.status === 405
+    record(`anonymous cannot call ${path}`, blocked && !leaked, `status ${res.status}`)
+  }
+
+  const demoAdmin = await req("/demo/admin")
+  const demoAdminCookie = cookieFrom(demoAdmin)
+  const demoAdminLoc = demoAdmin.headers.get("location") || ""
+  record("/demo/admin does not set vc_session", !demoAdminCookie.includes("vc_session"))
+  record(
+    "/demo/admin does not auto-login",
+    demoAdmin.status === 307 || demoAdmin.status === 302,
+    `status ${demoAdmin.status}`,
+  )
+  record("/demo/admin redirects to login", demoAdminLoc.includes("/login"))
+  const afterDemoAdmin = await req("/api/admin/stats")
+  record("visiting /demo/admin does not grant Admin API access", afterDemoAdmin.status === 401, `status ${afterDemoAdmin.status}`)
+
   const studentReg = await req("/api/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -872,6 +930,18 @@ async function runHttpTests(ctx) {
   const logout = await req("/api/auth/logout", { method: "POST", headers: { cookie: studentCookie } })
   const afterLogout = await req("/api/auth/me", { headers: { cookie: studentCookie } })
   record("logout invalidates the session", logout.ok && afterLogout.status === 401)
+
+  await req("/api/auth/logout", { method: "POST", headers: { cookie: adminCookie } })
+  const staleAdminDash = await req("/admin/dashboard", { headers: { cookie: adminCookie } })
+  const staleAdminLoc = staleAdminDash.headers.get("location") || ""
+  record(
+    "removing vc_session denies /admin/dashboard",
+    staleAdminDash.status === 307 || staleAdminDash.status === 302,
+    `status ${staleAdminDash.status}`,
+  )
+  record("stale admin cookie redirects to login", staleAdminLoc.includes("/login"))
+  const staleAdminApi = await req("/api/admin/stats", { headers: { cookie: adminCookie } })
+  record("removing vc_session denies Admin APIs", staleAdminApi.status === 401, `status ${staleAdminApi.status}`)
 
   const stillThere = await req("/api/auth/login", {
     method: "POST",

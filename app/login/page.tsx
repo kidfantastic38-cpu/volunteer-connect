@@ -55,7 +55,7 @@ export default function LoginPage() {
   }
 
   const useDemo = () => signIn("amara@example.com", "password")
-  const useAdminDemo = () => signIn("admin@volunteerconnect.org", "password")
+  const showDemoAdmin = process.env.NODE_ENV === "development"
 
   return (
     <AuthShell>
@@ -94,10 +94,18 @@ export default function LoginPage() {
             <Sparkles className="size-4" aria-hidden="true" />
             Explore the demo profile (Amara)
           </Button>
-          <Button type="button" variant="ghost" onClick={useAdminDemo} disabled={submitting} className="h-11 w-full text-sm">
-            <ShieldAlert className="size-4" aria-hidden="true" />
-            Enter the admin console
-          </Button>
+          {showDemoAdmin ? (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => signIn("admin@volunteerconnect.org", "password")}
+              disabled={submitting}
+              className="h-11 w-full text-sm"
+            >
+              <ShieldAlert className="size-4" aria-hidden="true" />
+              Enter the admin console
+            </Button>
+          ) : null}
         </div>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
