@@ -272,7 +272,7 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b border-border bg-background/95 px-3 backdrop-blur-sm md:hidden">
-          <Link href="/" aria-label="Volunteer Connect home" className="min-w-0">
+          <Link href="/" aria-label="Volunteer Connect home" className="min-w-0 flex-1">
             <Logo />
           </Link>
           <div className="flex shrink-0 items-center gap-1">

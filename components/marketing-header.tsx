@@ -27,8 +27,8 @@ export function MarketingHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-sm">
-      <div className="mx-auto flex h-[4.25rem] max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
-        <Link href="/" aria-label="Volunteer Connect home" onClick={() => setOpen(false)}>
+      <div className="mx-auto flex h-[4.25rem] max-w-6xl items-center justify-between gap-2 px-4 sm:gap-3 sm:px-6">
+        <Link href="/" aria-label="Volunteer Connect home" className="min-w-0" onClick={() => setOpen(false)}>
           <Logo />
         </Link>
         <nav className="hidden items-center gap-7 text-[0.9375rem] text-muted-foreground md:flex">
@@ -45,7 +45,7 @@ export function MarketingHeader() {
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           <ThemeToggle />
           <div className="hidden items-center gap-1.5 md:flex">
             <ButtonLink href="/login" variant="ghost" size="sm" prefetch>
