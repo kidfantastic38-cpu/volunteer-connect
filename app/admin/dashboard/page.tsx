@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Briefcase, Building2, FileText, Sparkles, UserCheck, Users } from "lucide-react"
+import { Briefcase, Building2, FileText, ShieldCheck, UserCheck, Users } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
 import { AdminError, AdminHeader, AdminLoading } from "@/components/admin-ui"
 import { ButtonLink } from "@/components/button-link"
@@ -26,7 +26,7 @@ export default function AdminDashboardPage() {
     { key: "totalOpportunities", label: "Total Opportunities", icon: Briefcase },
     { key: "publishedOpportunities", label: "Published Opportunities", icon: Briefcase },
     { key: "totalApplications", label: "Total Applications", icon: FileText },
-    { key: "pendingSkillVerifications", label: "Pending Skill Verifications", icon: Sparkles },
+    { key: "pendingSkillVerifications", label: "Pending Skill Verifications", icon: ShieldCheck },
   ]
 
   return (

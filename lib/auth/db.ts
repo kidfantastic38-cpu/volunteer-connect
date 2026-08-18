@@ -116,7 +116,6 @@ export async function seedDemoUsers() {
   const stamp = new Date().toISOString()
   const seeds: [string, string, string, AuthRole][] = [
     ["user-amara", "amara@example.com", "Amara Okafor", "student"],
-    ["user-admin", "admin@volunteerconnect.org", "Platform Admin", "admin"],
     ["user-earthwise", "hello@earthwise.org", "EarthWise Foundation", "employer"],
   ]
   for (const [id, email, name, role] of seeds) {

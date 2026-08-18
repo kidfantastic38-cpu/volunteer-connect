@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { AlertCircle, Briefcase, GraduationCap, Loader2 } from "lucide-react"
+import { Briefcase, GraduationCap, Loader2 } from "lucide-react"
 import { AuthShell } from "@/components/auth-shell"
 import { Field, Input, Select, Textarea } from "@/components/form-controls"
 import { Button } from "@/components/ui/button"
@@ -46,8 +46,6 @@ function RegisterForm() {
     const email = normalizeEmail(form.email)
     if (!email) e.email = "Email is required."
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Enter a valid email address."
-    else if (email === "amara@example.com" || email === "admin@volunteerconnect.org")
-      e.email = "This email is already registered. Try logging in instead."
     if (!form.password) e.password = "Choose a password."
     else if (form.password.length < 6) e.password = "Use at least 6 characters."
     if (form.confirm !== form.password) e.confirm = "Passwords do not match."
@@ -102,8 +100,8 @@ function RegisterForm() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold tracking-tight">Create your account</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Start turning your experience into opportunity.</p>
+      <h1 className="font-display text-2xl font-semibold tracking-tight">Create an account</h1>
+      <p className="mt-1 text-sm text-muted-foreground">For students and organisations in Sierra Leone.</p>
 
       <div className="mt-6">
         <p className="mb-2 text-sm font-medium">I am a…</p>
@@ -113,21 +111,21 @@ function RegisterForm() {
             onClick={() => setRole("student")}
             icon={<GraduationCap className="size-5" aria-hidden="true" />}
             title="Student"
-            subtitle="Build my profile"
+            subtitle="Keep a personal record"
           />
           <RoleCard
             active={role === "employer"}
             onClick={() => setRole("employer")}
             icon={<Briefcase className="size-5" aria-hidden="true" />}
-            title="Employer"
-            subtitle="Post opportunities"
+            title="Organisation"
+            subtitle="Post openings"
           />
         </div>
       </div>
 
       <form onSubmit={onSubmit} noValidate className="mt-5 space-y-4">
         <Field label={role === "employer" ? "Contact name" : "Full name"} htmlFor="name" error={errors.name}>
-          <Input id="name" value={form.name} onChange={set("name")} placeholder={role === "employer" ? "Jordan Lee" : "Amara Okafor"} autoComplete="name" />
+          <Input id="name" value={form.name} onChange={set("name")} placeholder={role === "employer" ? "Precious Mason" : "Nehemiah Williams"} autoComplete="name" />
         </Field>
         <Field label="Email" htmlFor="email" error={errors.email}>
           <Input id="email" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" autoComplete="email" />
@@ -165,7 +163,7 @@ function RegisterForm() {
               </Field>
             </div>
             <Field label="Contact phone" htmlFor="phone" error={errors.phone}>
-              <Input id="phone" type="tel" value={form.phone} onChange={set("phone")} placeholder="+44 161 000 0000" autoComplete="tel" />
+              <Input id="phone" type="tel" value={form.phone} onChange={set("phone")} placeholder="+232 76 000 555" autoComplete="tel" />
             </Field>
             <Field label="Website (optional)" htmlFor="website">
               <Input id="website" type="url" value={form.website} onChange={set("website")} placeholder="https://" />
@@ -174,7 +172,7 @@ function RegisterForm() {
               <Input id="registrationNumber" value={form.registrationNumber} onChange={set("registrationNumber")} placeholder="REG-000000" />
             </Field>
             <Field label="Address" htmlFor="address" error={errors.address}>
-              <Textarea id="address" value={form.address} onChange={set("address")} placeholder="Street, city, postcode" />
+              <Textarea id="address" value={form.address} onChange={set("address")} placeholder="Street, Freetown" />
             </Field>
             <Field label="Organization logo URL (optional)" htmlFor="logoUrl">
               <Input id="logoUrl" value={form.logoUrl} onChange={set("logoUrl")} placeholder="https://…/logo.png" />
@@ -187,13 +185,6 @@ function RegisterForm() {
           {submitting ? "Creating account…" : "Create account"}
         </Button>
       </form>
-
-      <p className="mt-5 flex items-start gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-        <AlertCircle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-        Demo tip only: <span className="font-medium text-foreground">amara@example.com</span> is already a
-        sample account, so the form shows &quot;already registered.&quot; Use your own email to create a real
-        account.
-      </p>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}

@@ -42,9 +42,9 @@ export default function OpportunitiesPage() {
   return (
     <AppShell>
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-foreground">Matched opportunities</h1>
+        <h1 className="font-display text-2xl font-semibold text-foreground">Openings</h1>
         <p className="text-sm text-muted-foreground">
-          Ranked by how well they fit your verified skills and interests.
+          Jobs, internships, scholarships, volunteering, and training — scored against the skills on your record.
         </p>
       </div>
 
@@ -57,7 +57,7 @@ export default function OpportunitiesPage() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search roles, organisations or skills"
             aria-label="Search opportunities"
-            className="w-full rounded-xl border border-input bg-card py-2.5 pl-10 pr-4 text-sm outline-none ring-ring/40 focus-visible:ring-2"
+            className="w-full rounded-xl border border-input bg-card py-3 pl-10 pr-4 text-base outline-none ring-ring/40 focus-visible:ring-2 md:text-sm"
           />
         </div>
         <div className="flex flex-wrap gap-2">
@@ -65,7 +65,7 @@ export default function OpportunitiesPage() {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
+              className={`min-h-11 rounded-full px-3.5 py-2 text-sm font-medium capitalize transition-colors ${
                 filter === f
                   ? "bg-primary text-primary-foreground"
                   : "border border-border bg-card text-muted-foreground hover:text-foreground"
@@ -104,7 +104,7 @@ export default function OpportunitiesPage() {
                       <OrgTrustBadge status={orgBadges[o.org.toLowerCase()]} />
                     </p>
                   </div>
-                  <MatchRing value={score} />
+                  <MatchRing value={score} size={48} />
                 </div>
 
                 <p className="mt-3 line-clamp-2 text-sm text-card-foreground/80">{o.description}</p>
@@ -127,25 +127,27 @@ export default function OpportunitiesPage() {
                   {o.compensation ? <span className="font-medium text-card-foreground/80">{o.compensation}</span> : null}
                 </div>
 
-                <div className="mt-4 flex items-center gap-2 border-t border-border pt-4">
-                  <ButtonLink href={`/opportunities/${o.id}`} size="sm" className="flex-1 justify-center">
+                <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center">
+                  <ButtonLink href={`/opportunities/${o.id}`} className="w-full justify-center sm:flex-1">
                     {status && status !== "saved" && status !== "withdrawn" && status !== "rejected" ? "View application" : "View details"}
                   </ButtonLink>
-                  <Button size="sm" variant="outline" onClick={() => setSelected(o)}>
-                    Quick apply
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    aria-label={saved ? "Saved" : "Save opportunity"}
-                    onClick={() => setApplication(o.id, "saved")}
-                  >
-                    {saved ? (
-                      <BookmarkCheck className="size-4 text-primary" aria-hidden="true" />
-                    ) : (
-                      <Bookmark className="size-4" aria-hidden="true" />
-                    )}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="min-w-0 flex-1" onClick={() => setSelected(o)}>
+                      Apply
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label={saved ? "Saved" : "Save opportunity"}
+                      onClick={() => setApplication(o.id, "saved")}
+                    >
+                      {saved ? (
+                        <BookmarkCheck className="size-4 text-primary" aria-hidden="true" />
+                      ) : (
+                        <Bookmark className="size-4" aria-hidden="true" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 {status && status !== "saved" ? (
                   <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-success">
@@ -258,11 +260,11 @@ function ApplyModal({ opportunity, onClose }: { opportunity: Opportunity | null;
             />
           </label>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={apply}>Submit application</Button>
+            <Button onClick={apply} className="w-full sm:w-auto">Submit application</Button>
           </div>
         </div>
       )}

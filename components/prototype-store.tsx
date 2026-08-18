@@ -49,6 +49,7 @@ export type Education = {
   institution: string
   qualification: string
   field: string
+  location?: string
   start: string
   end: string
   grade?: string
@@ -298,13 +299,12 @@ const demoSkills: Skill[] = [
 ]
 
 const demoProfile: Profile = {
-  name: "Amara Okafor",
-  email: "amara@example.com",
-  headline: "Aspiring community & sustainability leader",
-  location: "Manchester, UK",
-  about:
-    "18-year-old college leaver with two years of hands-on volunteering and a marketing internship. Passionate about community impact, sustainability and youth work.",
-  interests: ["Sustainability", "Community work", "Marketing", "Youth mentoring"],
+  name: "Sample Student",
+  email: "",
+  headline: "",
+  location: "Freetown, Sierra Leone",
+  about: "",
+  interests: [],
   avatar: "chart-1",
 }
 
@@ -350,11 +350,11 @@ const demoNotifications: AppNotification[] = [
 const defaultPortfolio: PortfolioSettings = {
   published: false,
   theme: "aurora",
-  slug: "amara-okafor",
+  slug: "portfolio",
   visibility: "unlisted",
   showContact: false,
   showEvidence: true,
-  tagline: "Turning community impact into a career in sustainability.",
+  tagline: "",
 }
 
 const defaultPrivacy: PrivacySettings = {
@@ -365,14 +365,7 @@ const defaultPrivacy: PrivacySettings = {
   matchAlerts: true,
 }
 
-const seedAdminUsers: AdminUser[] = [
-  { id: uid(), name: "Amara Okafor", email: "amara@example.com", role: "student", status: "active", joined: "2024-01-12", profileStrength: 100 },
-  { id: uid(), name: "James Whitfield", email: "james@example.com", role: "student", status: "active", joined: "2024-02-03", profileStrength: 72 },
-  { id: uid(), name: "Priya Nair", email: "priya@example.com", role: "student", status: "pending", joined: "2024-03-19", profileStrength: 34 },
-  { id: uid(), name: "EarthWise Foundation", email: "hello@earthwise.org", role: "employer", status: "active", joined: "2024-01-30", profileStrength: 88 },
-  { id: uid(), name: "GreenLeaf Startups", email: "team@greenleaf.io", role: "employer", status: "active", joined: "2024-02-22", profileStrength: 95 },
-  { id: uid(), name: "SkillBridge Academy", email: "admin@skillbridge.ac", role: "employer", status: "suspended", joined: "2024-03-01", profileStrength: 60 },
-]
+const seedAdminUsers: AdminUser[] = []
 
 const seedCategories: PlatformCategory[] = [
   { id: uid(), name: "Communication", skillCount: 14, active: true },

@@ -1,20 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import {
-  Award,
-  ChevronRight,
-  Compass,
-  FileText,
-  GraduationCap,
-  HeartHandshake,
-  LayoutGrid,
-  Share2,
-  Sparkles,
-} from "lucide-react"
+import { ChevronRight, FileText } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
 import { ButtonLink } from "@/components/button-link"
-import { Chip, MatchRing, ProgressBar, SkillBar } from "@/components/ui-bits"
+import { Chip, ProgressBar, SkillBar } from "@/components/ui-bits"
 import { oppTypeLabel, profileCompletion, usePrototype } from "@/components/prototype-store"
 import { cn } from "@/lib/utils"
 
@@ -32,133 +22,124 @@ function DashboardContent() {
   if (!user) return null
 
   const completion = profileCompletion({ onboarding })
+  const firstName = user.name.split(" ")[0]
   const topMatches = [...opportunities]
     .map((o) => ({ o, score: store.matchScore(o) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 3)
 
   const stats = [
-    { label: "Education", value: education.length, icon: GraduationCap, href: "/profile?tab=education" },
-    { label: "Experiences", value: experiences.length, icon: HeartHandshake, href: "/profile?tab=experience" },
-    { label: "Projects", value: projects.length, icon: LayoutGrid, href: "/profile?tab=projects" },
-    { label: "Achievements", value: achievements.length, icon: Award, href: "/profile?tab=achievements" },
+    { label: "Education", value: education.length, href: "/profile?tab=education" },
+    { label: "Experience", value: experiences.length, href: "/profile?tab=experience" },
+    { label: "Projects", value: projects.length, href: "/profile?tab=projects" },
+    { label: "Awards", value: achievements.length, href: "/profile?tab=achievements" },
   ]
 
   const checklist = [
-    { key: "basics", label: "Complete your basics", href: "/profile" },
-    { key: "education", label: "Add your education", href: "/profile?tab=education" },
-    { key: "experience", label: "Add an experience", href: "/profile?tab=experience" },
-    { key: "projects", label: "Add a project", href: "/profile?tab=projects" },
-    { key: "achievements", label: "Add an achievement", href: "/profile?tab=achievements" },
-    { key: "skills", label: "Confirm your skills", href: "/profile?tab=skills" },
+    { key: "basics", label: "Basics", href: "/profile" },
+    { key: "education", label: "Education", href: "/profile?tab=education" },
+    { key: "experience", label: "Experience", href: "/profile?tab=experience" },
+    { key: "projects", label: "A project", href: "/profile?tab=projects" },
+    { key: "achievements", label: "An award", href: "/profile?tab=achievements" },
+    { key: "skills", label: "Skills", href: "/profile?tab=skills" },
   ] as const
 
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-8 flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-balance">
-            Welcome back, {user.name.split(" ")[0]}
-          </h1>
-          {user.headline ? <p className="mt-1 text-sm text-muted-foreground text-pretty">{user.headline}</p> : null}
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-balance">{firstName}</h1>
+          <p className="mt-1 max-w-md text-sm text-muted-foreground text-pretty">
+            {user.headline || "Your record, and openings that fit what you have listed."}
+          </p>
         </div>
-        <ButtonLink href="/cv">
+        <ButtonLink href="/cv" variant="outline">
           <FileText className="size-4" aria-hidden="true" />
-          Generate CV
+          Open CV
         </ButtonLink>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          {/* Completion */}
-          <div className="rounded-2xl border border-border bg-card p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="font-display text-lg font-semibold">Profile strength</h2>
-                <p className="text-sm text-muted-foreground">A stronger profile means better matches.</p>
-              </div>
-              <span className="font-display text-2xl font-bold text-primary">{completion}%</span>
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="space-y-8 lg:col-span-2">
+          <section>
+            <div className="mb-3 flex items-baseline justify-between gap-4">
+              <h2 className="font-display text-lg font-semibold">Your record</h2>
+              <span className="text-sm tabular-nums text-muted-foreground">{completion}% complete</span>
             </div>
-            <ProgressBar value={completion} />
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <ProgressBar value={completion} className="h-1.5" />
+            <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2">
               {checklist.map((c) => {
                 const done = onboarding[c.key as keyof typeof onboarding]
                 return (
-                  <Link
-                    key={c.key}
-                    href={c.href}
-                    className={cn(
-                      "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
-                      done ? "border-success/30 bg-success/5" : "border-border hover:bg-muted",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "grid size-5 place-items-center rounded-full text-[10px] font-bold",
-                        done ? "bg-success text-success-foreground" : "border border-border text-muted-foreground",
-                      )}
+                  <li key={c.key}>
+                    <Link
+                      href={c.href}
+                      className="flex items-center gap-2 py-1 text-sm hover:text-foreground"
                     >
-                      {done ? "✓" : ""}
-                    </span>
-                    <span className={cn(done ? "text-foreground" : "text-muted-foreground")}>{c.label}</span>
-                  </Link>
+                      <span
+                        className={cn(
+                          "size-1.5 shrink-0 rounded-full",
+                          done ? "bg-primary" : "bg-border",
+                        )}
+                        aria-hidden="true"
+                      />
+                      <span className={done ? "text-foreground" : "text-muted-foreground"}>{c.label}</span>
+                    </Link>
+                  </li>
                 )
               })}
-            </div>
-          </div>
+            </ul>
+          </section>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border sm:grid-cols-4">
             {stats.map((s) => (
-              <Link key={s.label} href={s.href} className="rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary">
-                <s.icon className="size-5 text-primary" aria-hidden="true" />
-                <p className="mt-3 font-display text-2xl font-bold">{s.value}</p>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
+              <Link
+                key={s.label}
+                href={s.href}
+                className="bg-card px-4 py-4 transition-colors hover:bg-muted"
+              >
+                <dt className="text-xs text-muted-foreground">{s.label}</dt>
+                <dd className="mt-1 font-display text-2xl font-semibold tabular-nums">{s.value}</dd>
               </Link>
             ))}
-          </div>
+          </dl>
 
-          {/* Top matches */}
-          <div className="rounded-2xl border border-border bg-card p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="font-display text-lg font-semibold">Recommended for you</h2>
-                <p className="text-sm text-muted-foreground">Matched to your skills and interests.</p>
-              </div>
-              <Link href="/opportunities" className="inline-flex items-center text-sm font-medium text-primary hover:underline">
-                See all <ChevronRight className="size-4" aria-hidden="true" />
+          <section>
+            <div className="mb-3 flex items-baseline justify-between gap-4">
+              <h2 className="font-display text-lg font-semibold">Openings that fit</h2>
+              <Link href="/opportunities" className="inline-flex items-center text-sm text-primary hover:underline">
+                All openings <ChevronRight className="size-4" aria-hidden="true" />
               </Link>
             </div>
-            <ul className="space-y-3">
+            <ul className="divide-y divide-border border-y border-border">
               {topMatches.map(({ o, score }) => (
                 <li key={o.id}>
-                  <Link
-                    href="/opportunities"
-                    className="flex items-center gap-4 rounded-xl border border-border p-3 transition-colors hover:bg-muted"
-                  >
-                    <MatchRing value={score} size={52} />
+                  <Link href="/opportunities" className="flex items-start gap-4 py-4 transition-colors hover:bg-muted/40">
+                    <span className="w-10 shrink-0 pt-0.5 text-sm tabular-nums text-muted-foreground">{score}%</span>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <p className="truncate font-medium">{o.title}</p>
-                        <Chip tone="accent">{oppTypeLabel[o.type]}</Chip>
+                        <Chip tone="muted">{oppTypeLabel[o.type]}</Chip>
                       </div>
                       <p className="truncate text-sm text-muted-foreground">
                         {o.org} · {o.location}
                       </p>
                     </div>
-                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                   </Link>
                 </li>
               ))}
             </ul>
-          </div>
+          </section>
         </div>
 
-        {/* Right column */}
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-card p-6">
-            <h2 className="mb-1 font-display text-lg font-semibold">Your skills</h2>
-            <p className="mb-4 text-sm text-muted-foreground">{skills.length} skills detected</p>
+        <aside className="space-y-8">
+          <section>
+            <h2 className="mb-1 font-display text-lg font-semibold">Skills</h2>
+            <p className="mb-4 text-sm text-muted-foreground">
+              {skills.length === 0
+                ? "None listed yet."
+                : `${skills.length} on your record`}
+            </p>
             {skills.length > 0 ? (
               <div className="space-y-3">
                 {skills.slice(0, 5).map((s) => (
@@ -166,36 +147,28 @@ function DashboardContent() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Add experiences to detect skills.</p>
+              <p className="text-sm text-muted-foreground">Add experience, then name the skills it used.</p>
             )}
             <ButtonLink href="/profile?tab=skills" variant="outline" className="mt-4 w-full">
-              Manage skills
+              Edit skills
             </ButtonLink>
-          </div>
+          </section>
 
-          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6">
-            <Sparkles className="size-6 text-primary" aria-hidden="true" />
-            <h2 className="mt-3 font-display text-base font-semibold">Ready to share?</h2>
+          <section className="border-t border-border pt-6">
+            <h2 className="font-display text-base font-semibold">CV and public page</h2>
             <p className="mt-1 text-sm text-muted-foreground text-pretty">
-              Generate a polished CV and a shareable portfolio from your profile in one click.
+              Built from the same record. Print a CV or share a link.
             </p>
             <div className="mt-4 flex flex-col gap-2">
-              <ButtonLink href="/cv">
-                <FileText className="size-4" aria-hidden="true" />
-                Build my CV
+              <ButtonLink href="/cv" variant="outline">
+                CV
               </ButtonLink>
               <ButtonLink href="/portfolio" variant="outline">
-                <Share2 className="size-4" aria-hidden="true" />
-                View portfolio
+                Public page
               </ButtonLink>
             </div>
-          </div>
-
-          <ButtonLink href="/opportunities" variant="outline" className="w-full">
-            <Compass className="size-4" aria-hidden="true" />
-            Explore opportunities
-          </ButtonLink>
-        </div>
+          </section>
+        </aside>
       </div>
     </div>
   )

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import Link from "next/link"
-import { Briefcase, Users, Eye, Plus, ChevronRight } from "lucide-react"
+import { Briefcase, Plus, ChevronRight } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
 import { OrgTrustBadge } from "@/components/org-badge"
 import { VerificationBanner } from "@/components/verification-banner"
@@ -26,21 +26,21 @@ export default function EmployerDashboard() {
   const newApplicants = totalApplicants
 
   const stats = [
-    { label: "Active opportunities", value: mine.length, icon: Briefcase },
-    { label: "Total applications", value: totalApplicants, icon: Users },
-    { label: "New applications", value: newApplicants, icon: Eye },
+    { label: "Openings posted", value: mine.length },
+    { label: "Applications", value: totalApplicants },
+    { label: "New applications", value: newApplicants },
   ]
 
   return (
     <AppShell requiredRole="employer">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight">
-            {organization?.name || user?.name || "Provider"} dashboard
+          <h1 className="font-display text-2xl font-semibold tracking-tight">
+            {organization?.name || user?.name || "Organisation"}
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <p className="text-sm text-muted-foreground">
-              Post opportunities and discover evidence-backed young talent.
+              Openings you have posted, and applications received.
             </p>
             <OrgTrustBadge status={organization?.verificationStatus} />
           </div>
@@ -57,14 +57,11 @@ export default function EmployerDashboard() {
       </div>
       <VerificationBanner status={organization?.verificationStatus} />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid grid-cols-1 gap-px overflow-hidden border border-border bg-border sm:grid-cols-3">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-2xl border border-border bg-card p-5">
-            <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
-              <s.icon className="size-5" aria-hidden="true" />
-            </div>
-            <p className="mt-3 font-display text-3xl font-bold">{s.value}</p>
-            <p className="text-sm text-muted-foreground">{s.label}</p>
+          <div key={s.label} className="bg-card px-5 py-4">
+            <p className="text-xs text-muted-foreground">{s.label}</p>
+            <p className="mt-1 font-display text-2xl font-semibold tabular-nums">{s.value}</p>
           </div>
         ))}
       </div>
@@ -80,8 +77,8 @@ export default function EmployerDashboard() {
         {mine.length === 0 ? (
           <EmptyState
             icon={<Briefcase className="size-6" aria-hidden="true" />}
-            title="No opportunities posted yet"
-            description="Post your first role, internship, scholarship or volunteering opportunity to start matching with candidates."
+            title="No openings posted yet"
+            description="Post a job, internship, scholarship, volunteering role, or training place."
             action={
               verified ? (
                 <ButtonLink href="/employer/post">Post an opportunity</ButtonLink>
@@ -95,40 +92,34 @@ export default function EmployerDashboard() {
         ) : (
           <div className="flex flex-col gap-3">
             {mine.map((o) => (
-              <div key={o.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4">
+              <div key={o.id} className="flex flex-col gap-3 rounded-xl border border-border p-4">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-card-foreground">{o.title}</p>
+                    <p className="font-medium text-card-foreground text-pretty">{o.title}</p>
                     <Chip tone="accent">{oppTypeLabel[o.type]}</Chip>
                     <Chip tone="muted">{o.status || "published"}</Chip>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {o.location} · Closes {o.deadline}
+                    {o.location} · Closes {o.deadline} · {o.applicants ?? 0} applicants
                   </p>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="font-display text-lg font-bold text-primary">{o.applicants ?? 0}</p>
-                    <p className="text-xs text-muted-foreground">applicants</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 gap-2">
                     {o.status === "draft" ? (
-                      <Button size="sm" variant="outline" onClick={() => void apiUpdateEmployerOpportunity(o.id, { status: "published" }).then(() => refreshMarketplace())}>
+                      <Button variant="outline" onClick={() => void apiUpdateEmployerOpportunity(o.id, { status: "published" }).then(() => refreshMarketplace())}>
                         Publish
                       </Button>
                     ) : null}
                     {o.status === "published" ? (
-                      <Button size="sm" variant="outline" onClick={() => void apiUpdateEmployerOpportunity(o.id, { status: "closed" }).then(() => refreshMarketplace())}>
+                      <Button variant="outline" onClick={() => void apiUpdateEmployerOpportunity(o.id, { status: "closed" }).then(() => refreshMarketplace())}>
                         Close
                       </Button>
                     ) : null}
-                    <Button size="sm" variant="ghost" onClick={() => void apiArchiveOpportunity(o.id).then(() => refreshMarketplace())}>
+                    <Button variant="ghost" onClick={() => void apiArchiveOpportunity(o.id).then(() => refreshMarketplace())}>
                       Archive
                     </Button>
-                    <ButtonLink href="/employer/candidates" variant="outline" size="sm">
+                    <ButtonLink href="/employer/candidates" variant="outline" className="justify-center">
                       Review
                     </ButtonLink>
-                  </div>
                 </div>
               </div>
             ))}

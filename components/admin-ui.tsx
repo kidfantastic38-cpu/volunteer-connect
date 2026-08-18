@@ -29,9 +29,22 @@ export function AdminHeader({ title, description, actions }: { title: string; de
         <h1 className="font-display text-2xl font-bold tracking-tight">{title}</h1>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-      {actions}
+      {actions ? <div className="flex flex-col gap-2 sm:flex-row">{actions}</div> : null}
     </div>
   )
+}
+
+export function AdminStack({ mobile, desktop }: { mobile: ReactNode; desktop: ReactNode }) {
+  return (
+    <>
+      <div className="space-y-3 md:hidden">{mobile}</div>
+      <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card md:block">{desktop}</div>
+    </>
+  )
+}
+
+export function AdminCard({ children }: { children: ReactNode }) {
+  return <article className="rounded-2xl border border-border bg-card p-4">{children}</article>
 }
 
 export function AdminConfirm({

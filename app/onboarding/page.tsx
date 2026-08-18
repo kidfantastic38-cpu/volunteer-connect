@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
@@ -10,11 +11,20 @@ import {
   GraduationCap,
   HeartHandshake,
   LayoutGrid,
-  Sparkles,
+  ListChecks,
+  Plus,
   User,
 } from "lucide-react"
 import { Logo } from "@/components/logo"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { Field, Input, Select, Textarea } from "@/components/form-controls"
+import { SelectWithOther } from "@/components/select-with-other"
+import {
+  FIELD_OF_STUDY_OPTIONS,
+  INSTITUTION_OPTIONS,
+  LOCATION_OPTIONS,
+  QUALIFICATION_OPTIONS,
+} from "@/lib/profile/field-options"
 import { Button } from "@/components/ui/button"
 import { Chip, ProgressBar, SkillBar } from "@/components/ui-bits"
 import {
@@ -30,7 +40,7 @@ const stepMeta = [
   { key: "experience", label: "Experience", icon: HeartHandshake },
   { key: "projects", label: "Projects", icon: LayoutGrid },
   { key: "achievements", label: "Achievements", icon: Award },
-  { key: "skills", label: "Your skills", icon: Sparkles },
+  { key: "skills", label: "Skills", icon: ListChecks },
 ] as const
 
 export default function OnboardingPage() {
@@ -48,13 +58,18 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-muted/30">
       <header className="border-b border-border bg-background">
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-4">
-          <Logo />
-          <button
-            onClick={finish}
-            className="text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            Skip for now
-          </button>
+          <Link href="/" aria-label="Volunteer Connect home">
+            <Logo />
+          </Link>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button
+              onClick={finish}
+              className="min-h-11 px-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              Skip for now
+            </button>
+          </div>
         </div>
       </header>
 
@@ -182,24 +197,26 @@ function BasicsStep({ onNext }: { onNext: () => void }) {
   return (
     <div>
       <StepIntro
-        title="Tell us about yourself"
-        description="A short headline and a few interests help us match you with the right opportunities."
+        title="About you"
+        description="A short line about what you do, and a few interests, help openings make more sense."
       />
       <div className="space-y-4">
-        <Field label="Headline" htmlFor="headline" hint="e.g. Aspiring community & sustainability leader">
+        <Field label="Headline" htmlFor="headline" hint="e.g. Student volunteer, Freetown">
           <Input
             id="headline"
             value={form.headline}
             onChange={(e) => setForm((f) => ({ ...f, headline: e.target.value }))}
-            placeholder="What best describes you?"
+            placeholder="Student volunteer, Freetown"
           />
         </Field>
         <Field label="Location" htmlFor="location">
-          <Input
+          <SelectWithOther
             id="location"
             value={form.location}
-            onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-            placeholder="City, Country"
+            onChange={(location) => setForm((f) => ({ ...f, location }))}
+            options={LOCATION_OPTIONS}
+            placeholder="Select a location"
+            otherPlaceholder="Enter your location"
           />
         </Field>
         <Field label="About you" htmlFor="about">
@@ -226,12 +243,14 @@ function BasicsStep({ onNext }: { onNext: () => void }) {
 
 function EducationStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
   const { education, addEducation, removeEducation, setOnboardingStep } = usePrototype()
-  const [form, setForm] = useState({ institution: "", qualification: "", field: "", start: "", end: "", grade: "" })
+  const [form, setForm] = useState({ institution: "", qualification: "", field: "", location: "", start: "", end: "", grade: "" })
+  const [formKey, setFormKey] = useState(0)
 
   const add = () => {
     if (!form.institution.trim() || !form.qualification.trim()) return
     addEducation({ ...form })
-    setForm({ institution: "", qualification: "", field: "", start: "", end: "", grade: "" })
+    setForm({ institution: "", qualification: "", field: "", location: "", start: "", end: "", grade: "" })
+    setFormKey((key) => key + 1)
     setOnboardingStep("education", true)
   }
 
@@ -254,15 +273,48 @@ function EducationStep({ onNext, onBack }: { onNext: () => void; onBack: () => v
           ))}
         </ul>
       )}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div key={formKey} className="grid gap-4 sm:grid-cols-2">
         <Field label="Institution" htmlFor="institution">
-          <Input id="institution" value={form.institution} onChange={(e) => setForm((f) => ({ ...f, institution: e.target.value }))} placeholder="Riverside College" />
+          <SelectWithOther
+            id="institution"
+            required
+            value={form.institution}
+            onChange={(institution) => setForm((f) => ({ ...f, institution }))}
+            options={INSTITUTION_OPTIONS}
+            placeholder="Select an institution"
+            otherPlaceholder="Enter your institution"
+          />
         </Field>
         <Field label="Qualification" htmlFor="qualification">
-          <Input id="qualification" value={form.qualification} onChange={(e) => setForm((f) => ({ ...f, qualification: e.target.value }))} placeholder="A-Levels / BTEC / Degree" />
+          <SelectWithOther
+            id="qualification"
+            required
+            value={form.qualification}
+            onChange={(qualification) => setForm((f) => ({ ...f, qualification }))}
+            options={QUALIFICATION_OPTIONS}
+            placeholder="Select a qualification"
+            otherPlaceholder="Enter your qualification"
+          />
         </Field>
         <Field label="Field of study" htmlFor="field">
-          <Input id="field" value={form.field} onChange={(e) => setForm((f) => ({ ...f, field: e.target.value }))} placeholder="Biology, Psychology…" />
+          <SelectWithOther
+            id="field"
+            value={form.field}
+            onChange={(field) => setForm((f) => ({ ...f, field }))}
+            options={FIELD_OF_STUDY_OPTIONS}
+            placeholder="Select a field of study"
+            otherPlaceholder="Enter your field of study"
+          />
+        </Field>
+        <Field label="Location" htmlFor="ed-location">
+          <SelectWithOther
+            id="ed-location"
+            value={form.location}
+            onChange={(location) => setForm((f) => ({ ...f, location }))}
+            options={LOCATION_OPTIONS}
+            placeholder="Select a location"
+            otherPlaceholder="Enter your location"
+          />
         </Field>
         <Field label="Grade (optional)" htmlFor="grade">
           <Input id="grade" value={form.grade} onChange={(e) => setForm((f) => ({ ...f, grade: e.target.value }))} placeholder="AAB / Merit / 2:1" />
@@ -572,13 +624,13 @@ function SkillsStep({ onBack, onFinish }: { onBack: () => void; onFinish: () => 
   return (
     <div>
       <StepIntro
-        title="We turned your experiences into skills"
-        description="Confirm the skills we detected. You can refine levels and add evidence later."
+        title="Skills from what you added"
+        description="Confirm these, or skip and add them later from your profile."
       />
 
       {suggestions.length > 0 ? (
         <div className="mb-6">
-          <p className="mb-2 text-sm font-medium">Detected from your activities</p>
+          <p className="mb-2 text-sm font-medium">Suggested from what you added</p>
           <div className="flex flex-wrap gap-2">
             {suggestions.map(([name, source]) => {
               const isAdded = added.includes(name)
@@ -594,7 +646,7 @@ function SkillsStep({ onBack, onFinish }: { onBack: () => void; onFinish: () => 
                       : "border-border hover:border-primary hover:bg-primary/5",
                   )}
                 >
-                  {isAdded ? <Check className="size-3.5" aria-hidden="true" /> : <Sparkles className="size-3.5" aria-hidden="true" />}
+                  {isAdded ? <Check className="size-3.5" aria-hidden="true" /> : <Plus className="size-3.5" aria-hidden="true" />}
                   {name}
                 </button>
               )

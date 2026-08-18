@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { AppShell } from "@/components/app-shell"
-import { AdminError, AdminHeader, AdminLoading } from "@/components/admin-ui"
+import { AdminError, AdminHeader, AdminLoading, AdminStack, AdminCard } from "@/components/admin-ui"
 import { Chip } from "@/components/ui-bits"
 import { adminApi, type AdminAuditRow, type AdminSettings } from "@/lib/admin/client"
 
@@ -66,7 +66,18 @@ export default function AdminSettingsPage() {
             {audit.length === 0 ? (
               <p className="text-sm text-muted-foreground">No audited actions yet.</p>
             ) : (
-              <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+              <AdminStack
+                mobile={audit.map((row) => (
+                  <AdminCard key={row.id}>
+                    <p className="font-medium">{row.action}</p>
+                    <p className="text-sm text-muted-foreground">{row.actorName}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{new Date(row.createdAt).toLocaleString()}</p>
+                    <p className="mt-1 break-all text-xs text-muted-foreground">
+                      {row.entityType} · {row.entityId.slice(0, 8)}
+                    </p>
+                  </AdminCard>
+                ))}
+                desktop={
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-border bg-muted/50 text-xs uppercase text-muted-foreground">
                     <tr>
@@ -89,7 +100,8 @@ export default function AdminSettingsPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+                }
+              />
             )}
           </section>
         </div>

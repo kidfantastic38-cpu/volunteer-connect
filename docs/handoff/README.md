@@ -38,7 +38,7 @@ This pack is the implementation source of truth for the VOLUNTEER CONNECT protot
 | `/demo/admin` | Instant admin session | `/admin` |
 | `/login` → **Explore the demo profile (Amara)** | Student with full sample data | `/dashboard` |
 | `/login` with `amara@example.com` + any password | Same as demo student | `/dashboard` |
-| `/login` → **Enter the admin console** | Platform admin | `/admin` |
+| `/login` with a provisioned admin email + password | Platform admin | `/admin/dashboard` |
 | `/register` | New student or employer (empty profile) | `/verify` then onboarding or employer home |
 
 Demo email verification code: `481920` (or any 6-digit code ending in an even digit).

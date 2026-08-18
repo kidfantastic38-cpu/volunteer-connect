@@ -23,7 +23,7 @@ export function Chip({
   const tones: Record<string, string> = {
     muted: "bg-muted text-muted-foreground",
     primary: "bg-primary/10 text-primary",
-    accent: "bg-accent/25 text-accent-foreground",
+    accent: "bg-accent/12 text-accent",
     success: "bg-success/15 text-success",
     outline: "border border-border text-foreground",
   }

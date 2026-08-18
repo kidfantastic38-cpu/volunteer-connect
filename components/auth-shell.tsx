@@ -1,46 +1,52 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
-import { BadgeCheck, Compass, Target } from "lucide-react"
 import { Logo } from "@/components/logo"
+import { ThemeToggle } from "@/components/theme-toggle"
 
-const highlights = [
-  { icon: Compass, text: "Guided onboarding that turns activities into skills" },
-  { icon: BadgeCheck, text: "Evidence-backed, verifiable profiles" },
-  { icon: Target, text: "Opportunities matched to your strengths" },
+const notes = [
+  "Students keep a record of school, volunteering, and projects.",
+  "Organisations post jobs, internships, scholarships, and training.",
+  "Organisation accounts are reviewed before they can publish.",
 ]
 
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="flex flex-col justify-center px-4 py-10 sm:px-8">
+      <div className="relative flex flex-col justify-center px-4 py-10 sm:px-8">
+        <div className="absolute right-4 top-4 sm:right-8 sm:top-6">
+          <ThemeToggle />
+        </div>
         <div className="mx-auto w-full max-w-sm">
-          <Link href="/" className="mb-8 inline-flex" aria-label="VolunteerConnect home">
+          <Link href="/" className="mb-8 inline-flex" aria-label="Volunteer Connect home">
             <Logo />
           </Link>
           {children}
         </div>
       </div>
       <aside className="relative hidden flex-col justify-between bg-primary p-10 text-primary-foreground lg:flex">
-        <Logo className="[&_span:last-child]:text-primary-foreground" showText />
+        <Link href="/" aria-label="Volunteer Connect home">
+          <Logo inverted />
+        </Link>
         <div>
-          <h2 className="font-display text-3xl font-bold leading-tight text-balance">
-            Every experience you&apos;ve had is worth something.
-          </h2>
-          <p className="mt-3 max-w-sm text-primary-foreground/80 text-pretty">
-            Join thousands of young people turning volunteering, projects and achievements into real career momentum.
+          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-primary-foreground/70">
+            Sierra Leone
           </p>
-          <ul className="mt-8 space-y-3">
-            {highlights.map((h) => (
-              <li key={h.text} className="flex items-center gap-3 text-sm">
-                <span className="grid size-8 place-items-center rounded-lg bg-primary-foreground/15">
-                  <h.icon className="size-4" aria-hidden="true" />
-                </span>
-                {h.text}
+          <h2 className="mt-4 font-display text-3xl font-semibold leading-tight text-balance">
+            A record you can take to an application.
+          </h2>
+          <p className="mt-4 max-w-sm text-primary-foreground/80 text-pretty">
+            Volunteer Connect is for young people and organisations in Sierra Leone — not a feed, and not a ranking
+            contest.
+          </p>
+          <ul className="mt-8 space-y-3 text-sm leading-relaxed text-primary-foreground/85">
+            {notes.map((text) => (
+              <li key={text} className="border-l border-primary-foreground/25 pl-4">
+                {text}
               </li>
             ))}
           </ul>
         </div>
-        <p className="text-xs text-primary-foreground/60">Prototype experience — no real data is stored.</p>
+        <p className="text-xs text-primary-foreground/60">Freetown · Volunteer Connect</p>
       </aside>
     </div>
   )

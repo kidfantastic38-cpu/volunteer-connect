@@ -117,7 +117,7 @@ export default function PostOpportunityPage() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Location" htmlFor="op-loc">
-              <TextInput id="op-loc" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Manchester, UK" />
+              <TextInput id="op-loc" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Freetown, Sierra Leone" />
             </Field>
             <Field label="Compensation (optional)" htmlFor="op-comp">
               <TextInput id="op-comp" value={form.compensation} onChange={(e) => setForm({ ...form, compensation: e.target.value })} placeholder="£23,000 / year" />

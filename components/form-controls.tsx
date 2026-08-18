@@ -2,7 +2,7 @@ import type { ReactNode, SelectHTMLAttributes } from "react"
 import { cn } from "@/lib/utils"
 
 const base =
-  "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:opacity-50"
+  "w-full min-h-11 rounded-lg border border-input bg-background px-3 py-2 text-base text-foreground placeholder:text-muted-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:opacity-50 md:min-h-10 md:text-sm"
 
 export function Label({
   children,
@@ -21,7 +21,7 @@ export function Label({
 }
 
 export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn(base, "h-10", className)} {...props} />
+  return <input className={cn(base, "h-11 md:h-10", className)} {...props} />
 }
 
 export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
@@ -34,7 +34,7 @@ export function Select({
   ...props
 }: SelectHTMLAttributes<HTMLSelectElement> & { children: ReactNode }) {
   return (
-    <select className={cn(base, "h-10 pr-8", className)} {...props}>
+    <select className={cn(base, "h-11 pr-8 md:h-10", className)} {...props}>
       {children}
     </select>
   )

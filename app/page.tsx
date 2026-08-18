@@ -1,57 +1,33 @@
 import Image from "next/image"
-import {
-  ArrowRight,
-  Award,
-  BadgeCheck,
-  Compass,
-  FileText,
-  GraduationCap,
-  HeartHandshake,
-  LayoutGrid,
-  Sparkles,
-  Target,
-  UserPlus,
-} from "lucide-react"
+import Link from "next/link"
 import { MarketingHeader } from "@/components/marketing-header"
 import { Logo } from "@/components/logo"
-import { Chip } from "@/components/ui-bits"
 import { ButtonLink } from "@/components/button-link"
 
 const steps = [
   {
-    icon: UserPlus,
-    title: "Register & set up",
-    body: "Create an account, pick your goal, and build your basic profile in minutes.",
+    title: "Create an account",
+    body: "Register as a student or as an organisation. Students start a personal record; organisations wait for review before they can post.",
   },
   {
-    icon: Compass,
-    title: "Guided onboarding",
-    body: "We walk you through adding education, experiences, projects and achievements.",
+    title: "Add what you have already done",
+    body: "School, volunteering, internships, projects, and awards. Formal employment is not required.",
   },
   {
-    icon: Sparkles,
-    title: "Skills extracted",
-    body: "Your activities are translated into structured, evidence-backed skills.",
+    title: "List the skills those activities used",
+    body: "Name the skills, attach a certificate or reference where you have one, and ask someone to confirm them.",
   },
   {
-    icon: FileText,
-    title: "CV & portfolio",
-    body: "Generate a professional CV and a shareable digital portfolio automatically.",
-  },
-  {
-    icon: Target,
-    title: "Get matched",
-    body: "Discover jobs, internships, scholarships, volunteering and training that fit you.",
+    title: "Use the record to apply",
+    body: "Print a CV, share a public page, and apply for jobs, internships, scholarships, volunteering, and training listed here.",
   },
 ]
 
-const features = [
-  { icon: GraduationCap, title: "Education tracking", body: "Log qualifications, grades and academic achievements." },
-  { icon: HeartHandshake, title: "Experience library", body: "Volunteering, internships and work experience in one place." },
-  { icon: LayoutGrid, title: "Projects & evidence", body: "Attach references, certificates, photos and links as proof." },
-  { icon: BadgeCheck, title: "Verified skills", body: "Turn what you did into skills employers can trust." },
-  { icon: FileText, title: "Instant CV", body: "A polished, recruiter-ready CV built from your profile." },
-  { icon: Award, title: "Digital portfolio", body: "A shareable page that shows your impact at a glance." },
+const recordItems = [
+  { title: "School and qualifications", body: "Institutions, courses, and grades you choose to include." },
+  { title: "Volunteering and work", body: "Community service, internships, and jobs — treated as experience, not as a lesser category." },
+  { title: "Projects and evidence", body: "What you built or organised, with photos, links, or certificates attached." },
+  { title: "Skills", body: "Skills named from that work, with optional confirmation from a person or organisation." },
 ]
 
 export default function Page() {
@@ -59,172 +35,140 @@ export default function Page() {
     <div className="min-h-screen">
       <MarketingHeader />
 
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
+      <section>
+        <div className="mx-auto grid max-w-6xl items-end gap-8 px-4 py-8 sm:gap-12 sm:px-6 sm:py-14 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] md:py-20">
           <div>
-            <Chip tone="primary" className="mb-4">
-              <Sparkles className="size-3" aria-hidden="true" /> Career readiness for young people
-            </Chip>
-            <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight text-balance sm:text-5xl">
-              Turn your experience into <span className="text-primary">opportunity</span>.
+            <p className="mb-4 text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-accent">Sierra Leone</p>
+            <h1 className="font-display text-[1.85rem] font-semibold leading-[1.15] tracking-tight text-balance sm:text-[2.35rem] md:text-5xl">
+              Keep a record of the work you have already done.
             </h1>
-            <p className="mt-4 max-w-md text-base leading-relaxed text-muted-foreground text-pretty">
-              VolunteerConnect transforms your volunteering, internships, projects and achievements into structured
-              skills, a professional CV, a digital portfolio, and opportunities matched to you.
+            <p className="mt-4 max-w-lg text-base leading-relaxed text-muted-foreground text-pretty sm:mt-5 sm:text-[1.05rem]">
+              Volunteer Connect is for young people who volunteer, study, and take on projects — and need a way to show
+              that when they apply for jobs, internships, scholarships, and training in Sierra Leone.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <ButtonLink href="/register" sizeUp>
-                Get started free <ArrowRight className="size-4" aria-hidden="true" />
+            <div className="mt-6 flex w-full flex-col gap-2 sm:mt-8 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+              <ButtonLink href="/register" sizeUp className="w-full justify-center sm:w-auto">
+                Create an account
               </ButtonLink>
-              <ButtonLink href="/demo" variant="outline" sizeUp>
-                Explore a demo profile
+              <ButtonLink href="/login" variant="outline" sizeUp className="w-full justify-center sm:w-auto">
+                Log in
               </ButtonLink>
-            </div>
-            <div className="mt-8 flex items-center gap-6 text-sm text-muted-foreground">
-              <div>
-                <p className="font-display text-xl font-bold text-foreground">12k+</p>
-                <p>young people</p>
-              </div>
-              <div className="h-8 w-px bg-border" />
-              <div>
-                <p className="font-display text-xl font-bold text-foreground">3,400</p>
-                <p>opportunities</p>
-              </div>
-              <div className="h-8 w-px bg-border" />
-              <div>
-                <p className="font-display text-xl font-bold text-foreground">85%</p>
-                <p>felt job-ready</p>
-              </div>
             </div>
           </div>
-          <div className="relative">
-            <div className="overflow-hidden rounded-2xl border border-border shadow-sm">
+          <figure>
+            <div className="relative aspect-[16/10] overflow-hidden border border-border sm:aspect-[4/3]">
               <Image
-                src="/hero-students.png"
-                alt="Young volunteers collaborating on a community project"
-                width={720}
-                height={560}
-                className="h-auto w-full object-cover"
-                sizes="(min-width: 768px) 50vw, 100vw"
+                src="/volunteer-connect-youth.jpg"
+                alt="Young people participating in a community activity"
+                fill
+                className="object-cover object-[50%_20%]"
+                sizes="(min-width: 768px) 42vw, 100vw"
                 priority
               />
             </div>
-            <div className="absolute -bottom-5 -left-5 hidden rounded-xl border border-border bg-card p-4 shadow-e3 sm:block">
-              <div className="flex items-center gap-3">
-                <div className="grid size-9 place-items-center rounded-lg bg-success/15 text-success">
-                  <BadgeCheck className="size-5" aria-hidden="true" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">7 verified skills</p>
-                  <p className="text-xs text-muted-foreground">extracted from your activities</p>
-                </div>
-              </div>
-            </div>
-          </div>
+            <figcaption className="mt-2.5 text-xs leading-relaxed text-muted-foreground">
+              Community work counts here the same way classroom study does.
+            </figcaption>
+          </figure>
         </div>
       </section>
 
-      {/* How it works */}
-      <section id="how" className="border-t border-border bg-card/40">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <div className="mb-10 max-w-2xl">
-            <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
-              From first sign-up to job-ready
-            </h2>
-            <p className="mt-2 text-muted-foreground text-pretty">
-              A guided journey that meets you where you are — no formal work experience required.
+      <section id="how" className="border-t border-border">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">How it works</h2>
+            <p className="mt-3 max-w-sm text-muted-foreground text-pretty">
+              Four steps. You can skip parts and come back. Nothing here asks you to invent a career story.
             </p>
           </div>
-          <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <ol className="divide-y divide-border border-y border-border">
             {steps.map((s, i) => (
-              <li key={s.title} className="relative rounded-xl border border-border bg-card p-5">
-                <span className="font-display text-xs font-bold text-primary">STEP {i + 1}</span>
-                <div className="mt-3 grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
-                  <s.icon className="size-5" aria-hidden="true" />
+              <li key={s.title} className="grid gap-2 py-7 sm:grid-cols-[3.5rem_1fr] sm:gap-8">
+                <span className="font-display text-xl text-primary/80">{String(i + 1).padStart(2, "0")}</span>
+                <div>
+                  <h3 className="font-display text-lg font-semibold">{s.title}</h3>
+                  <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-muted-foreground text-pretty">{s.body}</p>
                 </div>
-                <h3 className="mt-3 font-display text-base font-semibold">{s.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground text-pretty">{s.body}</p>
               </li>
             ))}
           </ol>
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <div className="mb-10 max-w-2xl">
-          <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
-            Everything you need to prove your potential
-          </h2>
-          <p className="mt-2 text-muted-foreground text-pretty">
-            Built for students, graduates and volunteers with limited formal work experience.
-          </p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f) => (
-            <div key={f.title} className="rounded-xl border border-border bg-card p-6">
-              <div className="grid size-10 place-items-center rounded-lg bg-accent/25 text-accent-foreground">
-                <f.icon className="size-5" aria-hidden="true" />
+      <section id="record" className="border-t border-border bg-card/50">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <div className="max-w-xl">
+            <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">What goes on your record</h2>
+            <p className="mt-3 text-muted-foreground text-pretty">
+              One place for school, volunteering, and projects — then a CV and a page you can share when you apply.
+            </p>
+          </div>
+          <dl className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-2">
+            {recordItems.map((item) => (
+              <div key={item.title} className="border-t border-border pt-5">
+                <dt className="font-display text-base font-semibold">{item.title}</dt>
+                <dd className="mt-2 text-sm leading-relaxed text-muted-foreground text-pretty">{item.body}</dd>
               </div>
-              <h3 className="mt-4 font-display text-base font-semibold">{f.title}</h3>
-              <p className="mt-1 text-sm text-muted-foreground text-pretty">{f.body}</p>
-            </div>
-          ))}
+            ))}
+          </dl>
         </div>
       </section>
 
-      {/* Employers */}
-      <section id="employers" className="border-t border-border bg-primary text-primary-foreground">
-        <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 py-16 sm:px-6 md:grid-cols-2">
+      <section id="organisations" className="border-t border-border">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:items-start md:gap-16">
           <div>
-            <Chip className="mb-4 bg-primary-foreground/15 text-primary-foreground">For employers & providers</Chip>
-            <h2 className="font-display text-2xl font-bold tracking-tight text-balance sm:text-3xl">
-              Publish opportunities. Discover motivated talent.
+            <p className="mb-3 text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-accent">Organisations</p>
+            <h2 className="font-display text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
+              Post an opening. Read a record, not a slogan.
             </h2>
-            <p className="mt-3 max-w-md text-primary-foreground/80 text-pretty">
-              Post jobs, internships, scholarships, volunteering and training — then find candidates whose verified
-              skills and evidence actually match what you need.
+            <p className="mt-4 max-w-md text-muted-foreground text-pretty">
+              Companies, NGOs, schools, and public bodies in Sierra Leone can list jobs, internships, scholarships,
+              volunteering, and training. Applications sit against listed skills and evidence. New organisation accounts
+              are reviewed before they can publish.
             </p>
-            <ButtonLink href="/register?role=employer" variant="secondary" sizeUp className="mt-6">
-              Post an opportunity <ArrowRight className="size-4" aria-hidden="true" />
+            <ButtonLink href="/register?role=employer" sizeUp className="mt-7 w-full justify-center sm:w-auto">
+              Create an organisation account
             </ButtonLink>
           </div>
-          <div className="grid gap-3">
-            {["Skills-based candidate matching", "Evidence-backed profiles you can trust", "Reach young people early in their journey"].map(
-              (t) => (
-                <div
-                  key={t}
-                  className="flex items-center gap-3 rounded-xl bg-primary-foreground/10 px-4 py-3 text-sm font-medium"
-                >
-                  <BadgeCheck className="size-5 shrink-0" aria-hidden="true" />
-                  {t}
-                </div>
-              ),
-            )}
-          </div>
+          <ul className="space-y-5 border-l border-border pl-6 text-sm leading-relaxed text-muted-foreground">
+            <li>
+              <span className="block font-medium text-foreground">Openings you actually run</span>
+              Jobs, internships, scholarships, volunteering, and short courses — not a marketplace of invented roles.
+            </li>
+            <li>
+              <span className="block font-medium text-foreground">Applications you can check</span>
+              See the skills a person listed, and whether a certificate or reference is attached.
+            </li>
+            <li>
+              <span className="block font-medium text-foreground">A review before you post</span>
+              Volunteer Connect checks organisation details so students are not applying into a void.
+            </li>
+          </ul>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="mx-auto max-w-6xl px-4 py-20 text-center sm:px-6">
-        <h2 className="mx-auto max-w-2xl font-display text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-          Your experience already counts. Let&apos;s prove it.
-        </h2>
-        <ButtonLink href="/register" sizeUp className="mx-auto mt-8">
-          Create your free profile <ArrowRight className="size-4" aria-hidden="true" />
-        </ButtonLink>
+      <section className="border-t border-border">
+        <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-16 sm:flex-row sm:items-end sm:justify-between sm:px-6">
+          <div className="max-w-lg">
+            <h2 className="font-display text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
+              Start with what you have.
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground text-pretty">
+              A school name, a volunteering role, or a project is enough to begin.
+            </p>
+          </div>
+          <ButtonLink href="/register" sizeUp className="w-full justify-center sm:w-auto">
+            Create an account
+          </ButtonLink>
+        </div>
       </section>
 
       <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 sm:flex-row sm:px-6">
-          <Logo />
-          <p className="text-sm text-muted-foreground">
-            A career-readiness platform prototype. Built for young people.
-          </p>
-          <a href="/design-system" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
-            Design system
-          </a>
+        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-4 py-8 sm:flex-row sm:items-center sm:px-6">
+          <Link href="/" aria-label="Volunteer Connect home">
+            <Logo />
+          </Link>
+          <p className="text-sm text-muted-foreground">Freetown, Sierra Leone</p>
         </div>
       </footer>
     </div>

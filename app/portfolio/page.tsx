@@ -1,12 +1,14 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { ArrowLeft, Share2, Check, MapPin, ExternalLink, Pencil, EyeOff, Mail } from "lucide-react"
 import { usePrototype, experienceTypeLabel, type PortfolioTheme } from "@/components/prototype-store"
 import { Button } from "@/components/ui/button"
 import { ButtonLink } from "@/components/button-link"
 import { Chip, SkillBar, VerifiedBadge } from "@/components/ui-bits"
 import { Logo } from "@/components/logo"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 const themeAccent: Record<PortfolioTheme, { accent: string; heroFrom: string }> = {
   aurora: { accent: "var(--primary)", heroFrom: "from-secondary/60" },
@@ -39,11 +41,12 @@ export default function PortfolioPage() {
     <div className="min-h-dvh bg-background">
       {/* Owner toolbar */}
       <div className="border-b border-border bg-card">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3">
-          <ButtonLink href="/dashboard" variant="ghost" size="sm">
-            <ArrowLeft className="size-4" aria-hidden="true" /> Back to dashboard
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <ButtonLink href="/" variant="ghost" className="min-w-0">
+            <ArrowLeft className="size-4" aria-hidden="true" /> Home
           </ButtonLink>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <ThemeToggle size="icon-sm" />
             <Chip tone={portfolio.published ? "success" : "muted"}>
               {portfolio.published ? "Published" : "Draft"}
             </Chip>
@@ -207,7 +210,11 @@ export default function PortfolioPage() {
                   {education.map((ed) => (
                     <div key={ed.id}>
                       <p className="font-medium text-card-foreground">{ed.qualification}</p>
-                      <p className="text-sm text-muted-foreground">{ed.institution}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {ed.institution}
+                        {ed.field ? ` · ${ed.field}` : ""}
+                        {ed.location ? ` · ${ed.location}` : ""}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         {ed.start} – {ed.end || "Present"}
                       </p>
@@ -221,7 +228,7 @@ export default function PortfolioPage() {
               <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
                 <VerifiedBadge label="Evidence-backed" />
                 <p className="mt-2 text-sm text-card-foreground/80">
-                  Skills and achievements on this portfolio are supported by references, certificates and verified records.
+                  Skills and awards on this page can include a certificate or a named reference.
                 </p>
               </div>
             ) : null}
@@ -229,8 +236,10 @@ export default function PortfolioPage() {
         </div>
 
         <footer className="mt-12 flex items-center justify-center gap-2 border-t border-border pt-6 text-sm text-muted-foreground">
-          <Logo className="text-foreground" />
-          <span>· Portfolio built with VOLUNTEER CONNECT</span>
+          <Link href="/" aria-label="Volunteer Connect home">
+            <Logo className="text-foreground" />
+          </Link>
+          <span>· Volunteer Connect</span>
         </footer>
       </main>
     </div>

@@ -115,7 +115,7 @@ Desktop stepper is clickable; completed steps show a check. Mobile shows progres
 | Email `amara@example.com` + any password | `login()` → student demo data → `/dashboard` |
 | Other email | Form error: use the demo account |
 | Explore the demo profile | Same as Amara login (400ms) |
-| Enter the admin console | `loginAsAdmin()` → `/admin` |
+| Enter the admin console | Removed — admins sign in with email and password |
 | Empty fields | Field errors |
 
 Unknown emails never create a session. Production replaces this with real credentials + lockout.

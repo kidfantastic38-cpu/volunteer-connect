@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Building2, Loader2 } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
-import { AdminError, AdminHeader } from "@/components/admin-ui"
+import { AdminError, AdminHeader, AdminStack, AdminCard } from "@/components/admin-ui"
 import { OrgTrustBadge } from "@/components/org-badge"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui-bits"
@@ -52,7 +52,7 @@ export default function AdminVerificationsPage() {
           <button
             key={value}
             onClick={() => setFilter(value)}
-            className={`rounded-full px-3 py-1.5 text-sm font-medium capitalize ${
+            className={`min-h-11 rounded-full px-3.5 py-2 text-sm font-medium capitalize ${
               filter === value ? "bg-primary text-primary-foreground" : "border border-border bg-card text-muted-foreground"
             }`}
           >
@@ -67,7 +67,38 @@ export default function AdminVerificationsPage() {
       ) : visible.length === 0 ? (
         <EmptyState icon={<Building2 className="size-6" />} title="No requests" description="Nothing in this queue." />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+        <AdminStack
+          mobile={visible.map((item) => (
+            <AdminCard key={item.requestId}>
+              <p className="font-medium">{item.organizationName}</p>
+              <p className="text-sm text-muted-foreground">{item.ownerName}</p>
+              <p className="mt-1 truncate text-sm">{item.organizationEmail || item.ownerEmail}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <OrgTrustBadge status={item.status} />
+                <span className="text-xs text-muted-foreground">{new Date(item.submittedAt).toLocaleDateString()}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button disabled={busyId === item.organizationId} onClick={() => review(item, "approved")}>
+                  Approve
+                </Button>
+                <Button variant="outline" disabled={busyId === item.organizationId} onClick={() => review(item, "rejected")}>
+                  Reject
+                </Button>
+              </div>
+              <Button
+                className="mt-2 w-full"
+                variant="ghost"
+                disabled={busyId === item.organizationId}
+                onClick={() => {
+                  setMoreInfo(item)
+                  setNotes(item.notes)
+                }}
+              >
+                Request more information
+              </Button>
+            </AdminCard>
+          ))}
+          desktop={
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -114,7 +145,8 @@ export default function AdminVerificationsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          }
+        />
       )}
       <Modal open={!!moreInfo} onClose={() => setMoreInfo(null)} title="Request more information">
         <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What should the employer provide?" />

@@ -1,14 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { BadgeCheck, Bell, BriefcaseBusiness, CheckCheck, Sparkles, Star, Info } from "lucide-react"
+import { BadgeCheck, Bell, BriefcaseBusiness, CheckCheck, Compass, Star, Info } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
 import { usePrototype, type NotificationKind } from "@/components/prototype-store"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui-bits"
 
 const iconFor: Record<NotificationKind, React.ReactNode> = {
-  match: <Sparkles className="size-4" aria-hidden="true" />,
+  match: <Compass className="size-4" aria-hidden="true" />,
   application: <BriefcaseBusiness className="size-4" aria-hidden="true" />,
   verification: <BadgeCheck className="size-4" aria-hidden="true" />,
   endorsement: <Star className="size-4" aria-hidden="true" />,

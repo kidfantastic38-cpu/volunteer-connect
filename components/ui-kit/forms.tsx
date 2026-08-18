@@ -178,7 +178,7 @@ export function FileUpload({
           <Upload className="size-5" aria-hidden="true" />
         </span>
         <p className="text-sm font-medium text-foreground">
-          Drag &amp; drop files, or <span className="text-primary">browse</span>
+          Tap to choose a photo or file, or drag a file here
         </p>
         <p className="mt-1 text-xs text-muted-foreground">{accept}</p>
         <input
@@ -203,7 +203,7 @@ export function FileUpload({
                 type="button"
                 onClick={() => remove(i)}
                 aria-label={`Remove ${f.name}`}
-                className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="grid size-11 shrink-0 place-items-center rounded-md p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <X className="size-4" aria-hidden="true" />
               </button>

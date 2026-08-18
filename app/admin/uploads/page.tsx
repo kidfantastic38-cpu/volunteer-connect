@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Upload } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
-import { AdminError, AdminHeader, AdminLoading } from "@/components/admin-ui"
+import { AdminError, AdminHeader, AdminLoading, AdminStack, AdminCard } from "@/components/admin-ui"
 import { EmptyState } from "@/components/ui-bits"
 import { adminApi, type AdminUploadRow } from "@/lib/admin/client"
 
@@ -29,7 +29,18 @@ export default function AdminUploadsPage() {
       ) : rows.length === 0 ? (
         <EmptyState icon={<Upload className="size-6" />} title="No uploads" description="Evidence files linked to accounts will appear here." />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+        <AdminStack
+          mobile={rows.map((row) => (
+            <AdminCard key={row.id}>
+              <p className="font-medium break-all">{row.originalName}</p>
+              <p className="mt-1 text-sm">{row.ownerName}</p>
+              <p className="text-xs text-muted-foreground">{row.ownerEmail}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {row.mimeType} · {Math.round(row.size / 1024)} KB · {new Date(row.createdAt).toLocaleString()}
+              </p>
+            </AdminCard>
+          ))}
+          desktop={
           <table className="w-full text-left text-sm">
             <thead className="border-b border-border bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
@@ -55,7 +66,8 @@ export default function AdminUploadsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          }
+        />
       )}
     </AppShell>
   )

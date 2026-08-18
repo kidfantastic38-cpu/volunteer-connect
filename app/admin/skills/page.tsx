@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { AppShell } from "@/components/app-shell"
-import { AdminError, AdminHeader, AdminLoading } from "@/components/admin-ui"
+import { AdminError, AdminHeader, AdminLoading, AdminStack, AdminCard } from "@/components/admin-ui"
 import { Button } from "@/components/ui/button"
 import { Chip } from "@/components/ui-bits"
 import { adminApi, type AdminCatalogRow } from "@/lib/admin/client"
@@ -50,7 +50,27 @@ export default function AdminSkillsPage() {
       {loading ? (
         <AdminLoading />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+        <AdminStack
+          mobile={rows.map((row) => (
+            <AdminCard key={row.id}>
+              <p className="font-medium">{row.name}</p>
+              <p className="text-sm text-muted-foreground">{row.category}</p>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <Chip tone={row.active ? "success" : "muted"}>{row.active ? "Active" : "Disabled"}</Chip>
+                <Button
+                  variant="ghost"
+                  onClick={() =>
+                    void adminApi
+                      .saveCatalog({ id: row.id, name: row.name, category: row.category, active: !row.active })
+                      .then(load)
+                  }
+                >
+                  {row.active ? "Disable" : "Enable"}
+                </Button>
+              </div>
+            </AdminCard>
+          ))}
+          desktop={
           <table className="w-full text-left text-sm">
             <thead className="border-b border-border bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
@@ -85,7 +105,8 @@ export default function AdminSkillsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          }
+        />
       )}
     </AppShell>
   )

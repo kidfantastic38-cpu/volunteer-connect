@@ -11,6 +11,7 @@ export const runtime = "nodejs"
 export async function PUT(req: Request) {
   const user = await requireUser()
   if (isResponse(user)) return user
+  // Session identity only. Query parameters such as ?id= cannot retarget another account.
 
   const limited = await enforceRateLimit(rateLimitKey(req, "profile", user.id), 60, 15 * 60 * 1000)
   if (limited) return limited

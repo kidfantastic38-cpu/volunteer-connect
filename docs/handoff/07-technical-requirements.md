@@ -184,7 +184,7 @@ Do not call the model on every keystroke of search; filter/sort cached scores in
 | --- | --- | --- |
 | Evidence | Labels only | Multipart upload → object storage → `evidence.file_key` |
 | Avatar | Initials | Optional image, cropped, 256px |
-| Hero | `/hero-students.png` | Optimized `next/image` |
+| Hero | `/volunteer-connect-youth.jpg` | Optimized `next/image` |
 | CV PDF | `window.print()` | Server PDF (e.g. React-PDF or Playwright) stored 24h |
 | Portfolio OG | None | Generate `og:image` from theme + name |
 

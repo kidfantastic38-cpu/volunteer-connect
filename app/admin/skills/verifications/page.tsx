@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { AppShell } from "@/components/app-shell"
-import { AdminError, AdminHeader, AdminLoading } from "@/components/admin-ui"
+import { AdminError, AdminHeader, AdminLoading, AdminStack, AdminCard } from "@/components/admin-ui"
+import { Breadcrumbs } from "@/components/ui-kit/navigation"
 import { Button } from "@/components/ui/button"
 import { Chip } from "@/components/ui-bits"
 import { adminApi, type AdminSkillRow } from "@/lib/admin/client"
@@ -26,12 +27,41 @@ export default function AdminSkillVerificationsPage() {
 
   return (
     <AppShell requiredRole="admin">
+      <div className="mb-4">
+        <Breadcrumbs
+          items={[
+            { label: "Admin", href: "/admin/dashboard" },
+            { label: "Skills", href: "/admin/skills" },
+            { label: "Skill verification" },
+          ]}
+        />
+      </div>
       <AdminHeader title="Skill verification" description="Official verification is stored in skill_verifications. Client verified flags are ignored." />
       <AdminError message={error} />
       {loading ? (
         <AdminLoading />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+        <AdminStack
+          mobile={rows.map((row) => (
+            <AdminCard key={row.skillId}>
+              <p className="font-medium">{row.skillName}</p>
+              <p className="text-sm text-muted-foreground">{row.studentName}</p>
+              <p className="text-xs text-muted-foreground">{row.studentEmail}</p>
+              <p className="mt-2 text-sm">{row.source} · {row.evidenceBacked ? "Has evidence" : "No evidence"}</p>
+              <div className="mt-2">
+                <Chip tone={row.verified ? "success" : "muted"}>{row.verified ? "Verified" : "Pending"}</Chip>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button onClick={() => void adminApi.verifySkill({ userId: row.studentId, skillName: row.skillName, verified: true }).then(load)}>
+                  Verify
+                </Button>
+                <Button variant="outline" onClick={() => void adminApi.verifySkill({ userId: row.studentId, skillName: row.skillName, verified: false }).then(load)}>
+                  {row.verified ? "Remove" : "Reject"}
+                </Button>
+              </div>
+            </AdminCard>
+          ))}
+          desktop={
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="border-b border-border bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
@@ -95,7 +125,8 @@ export default function AdminSkillVerificationsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          }
+        />
       )}
     </AppShell>
   )

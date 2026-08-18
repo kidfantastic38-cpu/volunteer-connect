@@ -12,6 +12,13 @@ import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/modal"
 import { Field, TextInput, TextArea, SelectInput } from "@/components/form-controls"
 import { Chip, VerifiedBadge } from "@/components/ui-bits"
+import { SelectWithOther } from "@/components/select-with-other"
+import {
+  FIELD_OF_STUDY_OPTIONS,
+  INSTITUTION_OPTIONS,
+  LOCATION_OPTIONS,
+  QUALIFICATION_OPTIONS,
+} from "@/lib/profile/field-options"
 
 /* ------------------------------ shared helpers ----------------------------- */
 
@@ -115,6 +122,7 @@ export function EducationSection() {
     institution: "",
     qualification: "",
     field: "",
+    location: "",
     start: "",
     end: "",
     grade: "",
@@ -124,7 +132,7 @@ export function EducationSection() {
     e.preventDefault()
     addEducation({ ...form })
     setOnboardingStep("education", true)
-    setForm({ institution: "", qualification: "", field: "", start: "", end: "", grade: "" })
+    setForm({ institution: "", qualification: "", field: "", location: "", start: "", end: "", grade: "" })
     setOpen(false)
   }
 
@@ -138,7 +146,9 @@ export function EducationSection() {
             <RowCard key={ed.id} onDelete={() => removeEducation(ed.id)}>
               <p className="font-medium text-card-foreground">{ed.qualification}</p>
               <p className="text-sm text-muted-foreground">
-                {ed.institution} · {ed.field}
+                {ed.institution}
+                {ed.field ? ` · ${ed.field}` : ""}
+                {ed.location ? ` · ${ed.location}` : ""}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {ed.start} – {ed.end || "Present"}
@@ -151,17 +161,50 @@ export function EducationSection() {
       )}
 
       <Modal open={open} onClose={() => setOpen(false)} title="Add education" description="Schools, colleges, courses or qualifications.">
-        <form onSubmit={submit} className="flex flex-col gap-4">
+        <form key={open ? "open" : "closed"} onSubmit={submit} className="flex flex-col gap-4">
           <Field label="Institution" htmlFor="ed-inst">
-            <TextInput id="ed-inst" required value={form.institution} onChange={(e) => setForm({ ...form, institution: e.target.value })} placeholder="Riverside Community College" />
+            <SelectWithOther
+              id="ed-inst"
+              required
+              value={form.institution}
+              onChange={(institution) => setForm({ ...form, institution })}
+              options={INSTITUTION_OPTIONS}
+              placeholder="Select an institution"
+              otherPlaceholder="Enter your institution"
+            />
           </Field>
           <Field label="Qualification" htmlFor="ed-qual">
-            <TextInput id="ed-qual" required value={form.qualification} onChange={(e) => setForm({ ...form, qualification: e.target.value })} placeholder="A-Levels" />
+            <SelectWithOther
+              id="ed-qual"
+              required
+              value={form.qualification}
+              onChange={(qualification) => setForm({ ...form, qualification })}
+              options={QUALIFICATION_OPTIONS}
+              placeholder="Select a qualification"
+              otherPlaceholder="Enter your qualification"
+            />
           </Field>
-          <Field label="Subject / field" htmlFor="ed-field">
-            <TextInput id="ed-field" value={form.field} onChange={(e) => setForm({ ...form, field: e.target.value })} placeholder="Biology, Psychology" />
+          <Field label="Field of study" htmlFor="ed-field">
+            <SelectWithOther
+              id="ed-field"
+              value={form.field}
+              onChange={(field) => setForm({ ...form, field })}
+              options={FIELD_OF_STUDY_OPTIONS}
+              placeholder="Select a field of study"
+              otherPlaceholder="Enter your field of study"
+            />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <Field label="Location" htmlFor="ed-loc">
+            <SelectWithOther
+              id="ed-loc"
+              value={form.location}
+              onChange={(location) => setForm({ ...form, location })}
+              options={LOCATION_OPTIONS}
+              placeholder="Select a location"
+              otherPlaceholder="Enter your location"
+            />
+          </Field>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Start year" htmlFor="ed-start">
               <TextInput id="ed-start" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} placeholder="2022" />
             </Field>
@@ -270,7 +313,7 @@ export function ExperienceSection() {
           <Field label="Organisation" htmlFor="ex-org">
             <TextInput id="ex-org" required value={form.organization} onChange={(e) => setForm({ ...form, organization: e.target.value })} placeholder="Bright Futures Trust" />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Location" htmlFor="ex-loc">
               <TextInput id="ex-loc" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Manchester, UK" />
             </Field>
@@ -278,7 +321,7 @@ export function ExperienceSection() {
               <TextInput id="ex-hours" type="number" value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} placeholder="120" />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Start (YYYY-MM)" htmlFor="ex-start">
               <TextInput id="ex-start" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} placeholder="2023-01" />
             </Field>
@@ -364,7 +407,7 @@ export function ProjectSection() {
           <Field label="Project title" htmlFor="pr-title">
             <TextInput id="pr-title" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Campus Recycling Drive" />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Category" htmlFor="pr-cat">
               <SelectInput id="pr-cat" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as typeof form.category })}>
                 <option value="community">Community</option>
@@ -444,7 +487,7 @@ export function AchievementSection() {
           <Field label="Title" htmlFor="ac-title">
             <TextInput id="ac-title" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Regional Youth Green Award" />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Issuer" htmlFor="ac-issuer">
               <TextInput id="ac-issuer" value={form.issuer} onChange={(e) => setForm({ ...form, issuer: e.target.value })} placeholder="Youth Council" />
             </Field>

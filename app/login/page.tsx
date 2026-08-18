@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Loader2, ShieldAlert, Sparkles } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { AuthShell } from "@/components/auth-shell"
 import { Field, Input } from "@/components/form-controls"
 import { Button } from "@/components/ui/button"
@@ -46,7 +46,12 @@ export default function LoginPage() {
     void apiLogin({ email, password })
       .then((payload) => {
         restoreAccount(payload)
-        router.push(payload.user.role === "admin" ? "/admin/dashboard" : payload.user.role === "employer" ? "/employer" : "/dashboard")
+        const home = payload.user.role === "admin" ? "/admin/dashboard" : payload.user.role === "employer" ? "/employer" : "/dashboard"
+        if (!payload.emailVerified) {
+          router.push(`/verify?next=${encodeURIComponent(home)}`)
+          return
+        }
+        router.push(home)
       })
       .catch((err: unknown) => {
         setFormError(err instanceof Error ? err.message : "We couldn't find an account with those details.")
@@ -54,18 +59,11 @@ export default function LoginPage() {
       })
   }
 
-  const useDemo = () => signIn("amara@example.com", "password")
-  const showDemoAdmin = process.env.NODE_ENV === "development"
-
   return (
     <AuthShell>
       <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight">Welcome back</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Log in with the email and password you registered. Demo account:{" "}
-          <span className="font-medium text-foreground">amara@example.com</span> /{" "}
-          <span className="font-medium text-foreground">password</span>
-        </p>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">Log in</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Use the email and password you registered with.</p>
 
         <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
           {formError && (
@@ -84,29 +82,6 @@ export default function LoginPage() {
             {submitting ? "Logging in…" : "Log in"}
           </Button>
         </form>
-
-        <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" />
-        </div>
-
-        <div className="space-y-2">
-          <Button type="button" variant="outline" onClick={useDemo} disabled={submitting} className="h-11 w-full text-sm">
-            <Sparkles className="size-4" aria-hidden="true" />
-            Explore the demo profile (Amara)
-          </Button>
-          {showDemoAdmin ? (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => signIn("admin@volunteerconnect.org", "password")}
-              disabled={submitting}
-              className="h-11 w-full text-sm"
-            >
-              <ShieldAlert className="size-4" aria-hidden="true" />
-              Enter the admin console
-            </Button>
-          ) : null}
-        </div>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           New here?{" "}

@@ -1,5 +1,6 @@
 import type { AuthUser, ProfileSnapshot } from "@/lib/auth/types"
 import { skillVerificationMap, normalizeSkillKey } from "@/lib/auth/skills"
+import { assignOwnedId, ownedChildIds } from "@/lib/profile/persist"
 import { ownedUploadIdSet } from "@/lib/security/uploads"
 import { safeHttpUrl } from "@/lib/security/urls"
 import { asBoolean, asInt, asStringArray, clip, safeId, yearMonth } from "@/lib/security/validate"
@@ -71,15 +72,17 @@ export async function sanitizeProfileSnapshot(user: AuthUser, incoming: ProfileS
   const portfolioIn = src.portfolio && typeof src.portfolio === "object" ? (src.portfolio as Record<string, unknown>) : {}
   const privacyIn = src.privacy && typeof src.privacy === "object" ? (src.privacy as Record<string, unknown>) : {}
   const ownedUploads = await ownedUploadIdSet(user.id)
+  const ownedIds = await ownedChildIds(user.id)
 
   const education = Array.isArray(src.education)
-    ? src.education.slice(0, 20).map((item, index) => {
+    ? src.education.slice(0, 20).map((item) => {
         const rec = item && typeof item === "object" ? (item as Record<string, unknown>) : {}
         return {
-          id: safeId(rec.id) || `edu-${index}`,
+          id: assignOwnedId(rec.id, ownedIds.education),
           institution: clip(rec.institution, 120),
           qualification: clip(rec.qualification, 120),
           field: clip(rec.field, 120),
+          location: clip(rec.location, 120),
           start: yearMonth(rec.start),
           end: yearMonth(rec.end),
           grade: clip(rec.grade, 40),
@@ -89,10 +92,10 @@ export async function sanitizeProfileSnapshot(user: AuthUser, incoming: ProfileS
     : []
 
   const experiences = Array.isArray(src.experiences)
-    ? src.experiences.slice(0, 30).map((item, index) => {
+    ? src.experiences.slice(0, 30).map((item) => {
         const rec = item && typeof item === "object" ? (item as Record<string, unknown>) : {}
         return {
-          id: safeId(rec.id) || `exp-${index}`,
+          id: assignOwnedId(rec.id, ownedIds.experiences),
           type: EXP_TYPES.has(String(rec.type)) ? String(rec.type) : "volunteer",
           role: clip(rec.role, 120),
           organization: clip(rec.organization, 120),
@@ -109,10 +112,10 @@ export async function sanitizeProfileSnapshot(user: AuthUser, incoming: ProfileS
     : []
 
   const projects = Array.isArray(src.projects)
-    ? src.projects.slice(0, 30).map((item, index) => {
+    ? src.projects.slice(0, 30).map((item) => {
         const rec = item && typeof item === "object" ? (item as Record<string, unknown>) : {}
         return {
-          id: safeId(rec.id) || `proj-${index}`,
+          id: assignOwnedId(rec.id, ownedIds.projects),
           title: clip(rec.title, 160),
           category: PROJ_CATS.has(String(rec.category)) ? String(rec.category) : "personal",
           role: clip(rec.role, 120),
@@ -126,10 +129,10 @@ export async function sanitizeProfileSnapshot(user: AuthUser, incoming: ProfileS
     : []
 
   const achievements = Array.isArray(src.achievements)
-    ? src.achievements.slice(0, 30).map((item, index) => {
+    ? src.achievements.slice(0, 30).map((item) => {
         const rec = item && typeof item === "object" ? (item as Record<string, unknown>) : {}
         return {
-          id: safeId(rec.id) || `ach-${index}`,
+          id: assignOwnedId(rec.id, ownedIds.achievements),
           title: clip(rec.title, 160),
           issuer: clip(rec.issuer, 120),
           date: yearMonth(rec.date),
@@ -148,13 +151,13 @@ export async function sanitizeProfileSnapshot(user: AuthUser, incoming: ProfileS
   ])
 
   const skills = Array.isArray(src.skills)
-    ? src.skills.slice(0, 40).map((item, index) => {
+    ? src.skills.slice(0, 40).map((item) => {
         const rec = item && typeof item === "object" ? (item as Record<string, unknown>) : {}
         const name = clip(rec.name, 80)
         const key = normalizeSkillKey(name)
         const record = official.get(key)
         return {
-          id: safeId(rec.id) || `sk-${index}`,
+          id: assignOwnedId(rec.id, ownedIds.skills),
           name,
           level: asInt(rec.level, 1, 5, 3),
           category: SKILL_CATEGORIES.includes(rec.category as (typeof SKILL_CATEGORIES)[number])
@@ -179,10 +182,10 @@ export async function sanitizeProfileSnapshot(user: AuthUser, incoming: ProfileS
     : []
 
   const notifications = Array.isArray(src.notifications)
-    ? src.notifications.slice(0, 50).map((item, index) => {
+    ? src.notifications.slice(0, 50).map((item) => {
         const rec = item && typeof item === "object" ? (item as Record<string, unknown>) : {}
         return {
-          id: safeId(rec.id) || `nt-${index}`,
+          id: assignOwnedId(rec.id, ownedIds.notifications),
           kind: clip(rec.kind, 32) || "system",
           title: clip(rec.title, 120),
           body: clip(rec.body, 400),

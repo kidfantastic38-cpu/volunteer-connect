@@ -4,13 +4,14 @@ import { isResponse, requireUser } from "@/lib/auth/guards"
 import { verifyEmailCode } from "@/lib/auth/otp"
 import { buildAuthPayload } from "@/lib/auth/payload"
 import { sanitizeProfileSnapshot } from "@/lib/auth/sanitize-profile"
+import { setSessionCookie } from "@/lib/auth/session"
 import { enforceRateLimit } from "@/lib/security/http"
 import { rateLimitKey } from "@/lib/security/request"
 
 export const runtime = "nodejs"
 
 export async function POST(req: Request) {
-  const user = await requireUser()
+  const user = await requireUser({ allowUnverified: true })
   if (isResponse(user)) return user
 
   const limited = await enforceRateLimit(rateLimitKey(req, "verify-email", user.id), 10, 15 * 60 * 1000)
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
   await setEmailVerified(user.id, true)
   const fresh = await findUserById(user.id)
   if (!fresh) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  await setSessionCookie(fresh)
   const raw = await getProfileSnapshot(fresh.id)
   const snapshot = raw ? await sanitizeProfileSnapshot(fresh, raw) : null
   if (snapshot) await saveProfileSnapshot(fresh.id, snapshot)

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Search } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
-import { AdminConfirm, AdminError, AdminHeader, AdminLoading } from "@/components/admin-ui"
+import { AdminConfirm, AdminError, AdminHeader, AdminLoading, AdminStack, AdminCard } from "@/components/admin-ui"
 import { Avatar } from "@/components/app-shell"
 import { Button } from "@/components/ui/button"
 import { Chip, EmptyState } from "@/components/ui-bits"
@@ -58,16 +58,16 @@ export default function AdminUsersPage() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && load()}
             placeholder="Search name or email"
-            className="w-full rounded-xl border border-input bg-card py-2 pl-10 pr-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            className="w-full rounded-xl border border-input bg-card py-3 pl-10 pr-4 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:text-sm"
           />
         </div>
-        <select value={role} onChange={(e) => setRole(e.target.value)} className="rounded-xl border border-input bg-card px-3 py-2 text-sm">
+        <select value={role} onChange={(e) => setRole(e.target.value)} className="min-h-11 rounded-xl border border-input bg-card px-3 py-2 text-base md:text-sm">
           <option value="">All roles</option>
           <option value="student">Student</option>
           <option value="employer">Employer</option>
           <option value="admin">Admin</option>
         </select>
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-input bg-card px-3 py-2 text-sm">
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="min-h-11 rounded-xl border border-input bg-card px-3 py-2 text-base md:text-sm">
           <option value="">All statuses</option>
           <option value="active">Active</option>
           <option value="suspended">Suspended</option>
@@ -80,7 +80,48 @@ export default function AdminUsersPage() {
       ) : users.length === 0 ? (
         <EmptyState icon={<Search className="size-6" />} title="No users found" description="Try a different search or filter." />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+        <AdminStack
+          mobile={users.map((user) => (
+            <AdminCard key={user.id}>
+              <div className="flex items-center gap-3">
+                <Avatar name={user.name} className="size-10" />
+                <div className="min-w-0">
+                  <p className="font-medium">{user.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                </div>
+              </div>
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <dt className="text-xs text-muted-foreground">Role</dt>
+                  <dd className="capitalize">{user.role}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Status</dt>
+                  <dd className="capitalize">{user.status}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Registered</dt>
+                  <dd>{new Date(user.createdAt).toLocaleDateString()}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Email</dt>
+                  <dd>{user.emailVerified ? <Chip tone="success">Verified</Chip> : <Chip>Unverified</Chip>}</dd>
+                </div>
+              </dl>
+              <div className="mt-3">
+                {user.status === "active" ? (
+                  <Button className="w-full" variant="outline" disabled={busy === user.id} onClick={() => setPending({ user, status: "suspended" })}>
+                    Suspend
+                  </Button>
+                ) : (
+                  <Button className="w-full" variant="outline" disabled={busy === user.id} onClick={() => setPending({ user, status: "active" })}>
+                    Activate
+                  </Button>
+                )}
+              </div>
+            </AdminCard>
+          ))}
+          desktop={
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -125,7 +166,8 @@ export default function AdminUsersPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          }
+        />
       )}
       <AdminConfirm
         open={!!pending}

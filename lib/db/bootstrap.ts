@@ -3,7 +3,7 @@ import { ensureLocalSchema } from "@/lib/db/client"
 import { seedCatalogOpportunities } from "@/lib/opportunities/seed"
 import { allowDevSeed } from "@/lib/runtime/env"
 
-const BOOT_GEN = 2
+const BOOT_GEN = 3
 const globalForBoot = globalThis as unknown as { vcBoot?: Promise<void>; vcBootGen?: number }
 
 export async function bootstrapDatabase() {

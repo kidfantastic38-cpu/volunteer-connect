@@ -6,7 +6,7 @@ Manual QA for VOLUNTEER CONNECT. Prioritized for **demo success**: a live walkth
 
 - State is in-memory plus `sessionStorage`. Refresh in the **same tab** restores the session. A new tab or logout starts clean.
 - Demo student: `/login` → **Explore the demo profile (Amara)** or `amara@example.com` + any password.
-- Demo admin: `/login` → **Enter the admin console**.
+- Demo admin: `/login` with a provisioned admin email and password (no console shortcut).
 - OTP: `481920` (or any 6-digit code ending in an even digit).
 - Evidence “uploads” are labels only — no files persist.
 - Employer candidates are a hardcoded list, not live applicants.
@@ -37,7 +37,7 @@ Mark each item: **Pass** / **Fail** / **Blocked** / **N/A** (production-only).
 | --- | --- | --- | --- |
 | F-01 | Demo student login | `/login` → Explore the demo profile | Lands on `/dashboard` as Amara; sidebar shows student nav; sample data present |
 | F-02 | Email login | `amara@example.com` + any password | Same as F-01 after ~600ms “Logging in…” |
-| F-03 | Admin login | Enter the admin console | Lands on `/admin`; amber “Admin console” chip; admin nav only |
+| F-03 | Admin login | Admin email + password on `/login` | Lands on `/admin/dashboard`; amber “Admin console” chip; admin nav only |
 | F-04 | Login validation | Submit empty form | Email and password field errors; no navigation |
 | F-05 | Unknown email | `other@example.com` + password | Alert: couldn’t find account; stay on login |
 | F-06 | Register student | New name/email/password ≥6 / confirm | ~650ms → `/verify?next=/onboarding` |
@@ -242,7 +242,7 @@ Mark each item: **Pass** / **Fail** / **Blocked** / **N/A** (production-only).
 | U-03 | Cards | `rounded-2xl`, border, consistent padding; no mixed radii in one cluster |
 | U-04 | Growth tone | Empty/error copy is supportive (“Add an experience…”), never shaming |
 | U-05 | One primary CTA | Each header/modal has a single filled primary button |
-| U-06 | Landing hero | Image loads; “7 verified skills” card from `sm`; stats 12k / 3,400 / 85% |
+| U-06 | Landing hero | Image loads; “7 verified skills” card from `sm`; value statements (no invented traction stats) |
 | U-07 | Dark mode (DS) | All swatches and specimens readable; no white-on-white |
 
 ### 2.2 Navigation and wayfinding (P0)

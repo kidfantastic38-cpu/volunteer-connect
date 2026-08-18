@@ -3,6 +3,8 @@
 import { useEffect, useSyncExternalStore } from "react"
 import { Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Tooltip } from "@/components/ui-kit/feedback"
+import { cn } from "@/lib/utils"
 
 const themeListeners = new Set<() => void>()
 
@@ -33,10 +35,16 @@ function applyDark(isDark: boolean) {
 }
 
 /**
- * Minimal class-based theme toggle. Persists the choice to localStorage
- * (a UI preference, not application data) and toggles `.dark` on <html>.
+ * Class-based light/dark toggle. Persists to localStorage (a UI preference,
+ * not application data) and toggles `.dark` on <html>.
  */
-export function ThemeToggle({ className }: { className?: string }) {
+export function ThemeToggle({
+  className,
+  size = "icon",
+}: {
+  className?: string
+  size?: "icon" | "icon-sm"
+}) {
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -55,17 +63,21 @@ export function ThemeToggle({ className }: { className?: string }) {
     emitTheme()
   }
 
+  const label = mounted && dark ? "Switch to light mode" : "Switch to dark mode"
+
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      onClick={toggle}
-      aria-pressed={mounted ? dark : undefined}
-      className={className}
-    >
-      {mounted && dark ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
-      {mounted && dark ? "Light" : "Dark"} mode
-    </Button>
+    <Tooltip label={label}>
+      <Button
+        type="button"
+        variant="ghost"
+        size={size}
+        onClick={toggle}
+        aria-label={label}
+        title={label}
+        className={cn("text-muted-foreground hover:text-foreground", className)}
+      >
+        {mounted && dark ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
+      </Button>
+    </Tooltip>
   )
 }

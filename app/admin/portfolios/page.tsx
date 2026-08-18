@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Share2 } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
-import { AdminConfirm, AdminError, AdminHeader, AdminLoading } from "@/components/admin-ui"
+import { AdminConfirm, AdminError, AdminHeader, AdminLoading, AdminStack, AdminCard } from "@/components/admin-ui"
 import { Button } from "@/components/ui/button"
 import { Chip, EmptyState } from "@/components/ui-bits"
 import { adminApi, type AdminPortfolioRow } from "@/lib/admin/client"
@@ -41,7 +41,23 @@ export default function AdminPortfoliosPage() {
       ) : rows.length === 0 ? (
         <EmptyState icon={<Share2 className="size-6" />} title="No portfolios" description="Published and unpublished portfolios will appear here." />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+        <AdminStack
+          mobile={rows.map((row) => (
+            <AdminCard key={row.userId}>
+              <p className="font-medium">{row.name}</p>
+              <p className="text-sm text-muted-foreground">{row.tagline || row.slug || "No slug"}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Chip tone={row.published ? "success" : "muted"}>{row.published ? "Published" : "Unpublished"}</Chip>
+                <span className="text-xs text-muted-foreground">{row.visibility}</span>
+              </div>
+              {row.published ? (
+                <Button className="mt-3 w-full" variant="outline" onClick={() => setPendingId(row.userId)}>
+                  Unpublish
+                </Button>
+              ) : null}
+            </AdminCard>
+          ))}
+          desktop={
           <table className="w-full text-left text-sm">
             <thead className="border-b border-border bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
@@ -75,7 +91,8 @@ export default function AdminPortfoliosPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          }
+        />
       )}
       <AdminConfirm
         open={!!pendingId}

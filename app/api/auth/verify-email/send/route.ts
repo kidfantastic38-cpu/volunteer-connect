@@ -7,7 +7,7 @@ import { rateLimitKey } from "@/lib/security/request"
 export const runtime = "nodejs"
 
 export async function POST(req: Request) {
-  const user = await requireUser()
+  const user = await requireUser({ allowUnverified: true })
   if (isResponse(user)) return user
 
   const limited = await enforceRateLimit(rateLimitKey(req, "verify-email-send", user.id), 3, 15 * 60 * 1000)

@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Download, Printer, Sparkles } from "lucide-react"
+import { Download, Printer, FileText } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
 import { usePrototype, experienceTypeLabel, type CvTemplate } from "@/components/prototype-store"
 import { Button } from "@/components/ui/button"
@@ -21,14 +21,14 @@ export default function CvPage() {
   const hasContent = experiences.length + projects.length + education.length + achievements.length > 0
 
   const accent = template === "modern" ? "var(--primary)" : "var(--foreground)"
-  const blockGap = template === "compact" ? "gap-4 px-8 py-6" : "gap-7 px-8 py-7"
+  const blockGap = template === "compact" ? "gap-4 px-4 py-5 sm:px-8 sm:py-6" : "gap-6 px-4 py-5 sm:gap-7 sm:px-8 sm:py-7"
 
   return (
     <AppShell>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">CV generator</h1>
-          <p className="text-sm text-muted-foreground">Auto-built from your profile. Switch templates and export.</p>
+          <h1 className="font-display text-2xl font-semibold text-foreground">CV</h1>
+          <p className="text-sm text-muted-foreground">Built from your record. Choose a layout, then print or save as PDF.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-lg border border-border p-0.5" role="tablist" aria-label="Template">
@@ -58,9 +58,9 @@ export default function CvPage() {
 
       {!hasContent ? (
         <EmptyState
-          icon={<Sparkles className="size-6" aria-hidden="true" />}
-          title="Nothing to build yet"
-          description="Add experiences, projects and achievements to your profile and your CV will generate automatically."
+          icon={<FileText className="size-6" aria-hidden="true" />}
+          title="Nothing on the CV yet"
+          description="Add school, volunteering, or a project to your profile first."
           action={
             <Button onClick={() => router.push("/profile")}>Go to profile</Button>
           }
@@ -69,14 +69,14 @@ export default function CvPage() {
         <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border bg-card shadow-sm print:border-0 print:shadow-none">
           {/* CV header */}
           <div
-            className="px-8 py-7"
+            className="px-4 py-5 sm:px-8 sm:py-7"
             style={{
               backgroundColor: template === "modern" ? "var(--primary)" : "transparent",
               color: template === "modern" ? "var(--primary-foreground)" : "var(--card-foreground)",
               borderBottom: template === "classic" ? "3px solid var(--foreground)" : "none",
             }}
           >
-            <h2 className="font-display text-3xl font-bold">{user?.name}</h2>
+            <h2 className="font-display text-2xl font-bold sm:text-3xl">{user?.name}</h2>
             <p className={template === "modern" ? "text-primary-foreground/85" : "text-muted-foreground"}>
               {user?.headline}
             </p>
@@ -173,6 +173,7 @@ export default function CvPage() {
                       <p className="text-sm text-muted-foreground">
                         {ed.institution}
                         {ed.field ? ` · ${ed.field}` : ""}
+                        {ed.location ? ` · ${ed.location}` : ""}
                         {ed.grade ? ` · ${ed.grade}` : ""}
                       </p>
                     </div>

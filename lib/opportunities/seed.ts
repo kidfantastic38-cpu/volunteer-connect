@@ -1,9 +1,12 @@
-import { eq } from "drizzle-orm"
+import { and, eq, inArray } from "drizzle-orm"
 import { getDb } from "@/lib/db/client"
 import { opportunities } from "@/lib/db/schema"
 import { findOrganizationByOwner, reviewVerification } from "@/lib/org/db"
 import { findUserByEmail } from "@/lib/auth/db"
 import { createOpportunity, type OppType } from "@/lib/opportunities/store"
+
+const FREETOWN = "Freetown, Sierra Leone"
+const UK_DEMO_LOCATIONS = ["Manchester, UK", "Leeds, UK", "UK-wide"]
 
 const CATALOG: {
   ownerEmail: string
@@ -20,7 +23,7 @@ const CATALOG: {
     ownerEmail: "hello@earthwise.org",
     title: "Sustainability Programme Assistant",
     type: "job",
-    location: "Manchester, UK",
+    location: FREETOWN,
     remote: false,
     description: "Support the delivery of community sustainability programmes and volunteer coordination.",
     skills: ["Leadership", "Organization", "Communication", "Teamwork"],
@@ -31,7 +34,7 @@ const CATALOG: {
     ownerEmail: "hello@earthwise.org",
     title: "Community Garden Coordinator",
     type: "volunteering",
-    location: "Manchester, UK",
+    location: FREETOWN,
     remote: false,
     description: "Help run weekend garden sessions and mentor new volunteers.",
     skills: ["Leadership", "Teamwork", "Organization"],
@@ -52,7 +55,7 @@ const CATALOG: {
     ownerEmail: "hello@earthwise.org",
     title: "Youth Leadership Scholarship",
     type: "scholarship",
-    location: "UK-wide",
+    location: FREETOWN,
     remote: true,
     description: "£5,000 scholarship for young people demonstrating exceptional community leadership.",
     skills: ["Leadership", "Communication", "Problem Solving"],
@@ -63,7 +66,7 @@ const CATALOG: {
     ownerEmail: "hello@earthwise.org",
     title: "Weekend Food Bank Volunteer",
     type: "volunteering",
-    location: "Manchester, UK",
+    location: FREETOWN,
     remote: false,
     description: "Help sort and distribute food parcels to local families every Saturday.",
     skills: ["Teamwork", "Organization"],
@@ -73,7 +76,7 @@ const CATALOG: {
     ownerEmail: "hello@earthwise.org",
     title: "Communications Assistant",
     type: "job",
-    location: "Leeds, UK",
+    location: FREETOWN,
     remote: false,
     description: "Draft newsletters, manage the events calendar and support the small comms team.",
     skills: ["Communication", "Content Creation", "Organization"],
@@ -96,19 +99,44 @@ export async function approveDemoEmployer() {
   })
 }
 
+export async function relocateDemoOpportunityLocations(): Promise<number> {
+  const titles = CATALOG.filter((item) => item.location === FREETOWN).map((item) => item.title)
+  const db = getDb()
+  const rows = await db
+    .select({ id: opportunities.id, title: opportunities.title })
+    .from(opportunities)
+    .where(and(inArray(opportunities.title, titles), inArray(opportunities.location, UK_DEMO_LOCATIONS)))
+  const now = new Date().toISOString()
+  for (const row of rows) {
+    const next = CATALOG.find((item) => item.title === row.title)?.location ?? FREETOWN
+    await db.update(opportunities).set({ location: next, updatedAt: now }).where(eq(opportunities.id, row.id))
+  }
+  return rows.length
+}
+
 export async function seedCatalogOpportunities() {
+  await relocateDemoOpportunityLocations()
   await approveDemoEmployer()
   const owner = await findUserByEmail("hello@earthwise.org")
   if (!owner) return
   const org = await findOrganizationByOwner(owner.id)
   if (!org) return
   const existing = await getDb()
-    .select({ id: opportunities.id, title: opportunities.title })
+    .select({ id: opportunities.id, title: opportunities.title, location: opportunities.location })
     .from(opportunities)
     .where(eq(opportunities.organizationId, org.id))
-  const titles = new Set(existing.map((row) => row.title))
+  const byTitle = new Map(existing.map((row) => [row.title, row]))
   for (const item of CATALOG) {
-    if (titles.has(item.title)) continue
+    const current = byTitle.get(item.title)
+    if (current) {
+      if (UK_DEMO_LOCATIONS.includes(current.location) && current.location !== item.location) {
+        await getDb()
+          .update(opportunities)
+          .set({ location: item.location, updatedAt: new Date().toISOString() })
+          .where(and(eq(opportunities.id, current.id), inArray(opportunities.location, UK_DEMO_LOCATIONS)))
+      }
+      continue
+    }
     await createOpportunity({
       organizationId: org.id,
       title: item.title,

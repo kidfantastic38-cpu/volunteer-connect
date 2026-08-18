@@ -19,6 +19,7 @@ export type PublicPortfolio = {
     institution: string
     qualification: string
     field: string
+    location?: string
     start: string
     end: string
   }[]
@@ -80,7 +81,7 @@ export async function toPublicPortfolio(
   if (portfolio.visibility === "unlisted" && !viewer) return null
 
   const skills = (clean.skills as { name: string; level: number; category: string; verified?: boolean; evidenceBacked?: boolean }[]) ?? []
-  const education = (clean.education as { institution: string; qualification: string; field: string; start: string; end: string }[]) ?? []
+  const education = (clean.education as { institution: string; qualification: string; field: string; location?: string; start: string; end: string }[]) ?? []
   const experiences = (clean.experiences as {
     role: string
     organization: string
@@ -113,6 +114,7 @@ export async function toPublicPortfolio(
       institution: item.institution,
       qualification: item.qualification,
       field: item.field,
+      location: item.location || "",
       start: item.start,
       end: item.end,
     })),

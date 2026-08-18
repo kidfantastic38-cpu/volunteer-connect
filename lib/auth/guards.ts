@@ -4,13 +4,16 @@ import { readSession } from "@/lib/auth/session"
 import type { AuthRole, AuthUser } from "@/lib/auth/types"
 import { findOrganizationByOwner } from "@/lib/org/db"
 
-export async function requireUser(): Promise<AuthUser | NextResponse> {
+export async function requireUser(options?: { allowUnverified?: boolean }): Promise<AuthUser | NextResponse> {
   const session = await readSession()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = await findUserById(session.sub)
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   if (user.status && user.status !== "active") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+  if (!options?.allowUnverified && !user.emailVerified) {
+    return NextResponse.json({ error: "Please verify your email to continue." }, { status: 403 })
   }
   return user
 }

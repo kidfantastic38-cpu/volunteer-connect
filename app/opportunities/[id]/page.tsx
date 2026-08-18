@@ -1,10 +1,8 @@
 "use client"
 
 import { use, useState } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
-  ArrowLeft,
   Bookmark,
   BookmarkCheck,
   Building2,
@@ -22,10 +20,10 @@ import { ButtonLink } from "@/components/button-link"
 import { OrgTrustBadge } from "@/components/org-badge"
 import { Chip, MatchRing, EmptyState } from "@/components/ui-bits"
 import { Modal } from "@/components/modal"
+import { Breadcrumbs } from "@/components/ui-kit/navigation"
 
 export default function OpportunityDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const router = useRouter()
   const { opportunities, matchScore, skills, applications, setApplication, user, orgBadges } = usePrototype()
 
   const opportunity = opportunities.find((o) => o.id === id)
@@ -71,12 +69,14 @@ export default function OpportunityDetailsPage({ params }: { params: Promise<{ i
 
   return (
     <AppShell>
-      <button
-        onClick={() => router.back()}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" /> Back
-      </button>
+      <div className="mb-4">
+        <Breadcrumbs
+          items={[
+            { label: "Opportunities", href: "/opportunities" },
+            { label: opportunity.title },
+          ]}
+        />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main column */}
@@ -226,7 +226,7 @@ export default function OpportunityDetailsPage({ params }: { params: Promise<{ i
               </div>
             </div>
             <p className="mt-3 text-sm text-card-foreground/80">
-              A verified organisation on VolunteerConnect committed to developing young talent.
+              A reviewed organisation on Volunteer Connect.
             </p>
           </div>
 

@@ -1,17 +1,18 @@
 "use client"
 
-import { Check, ExternalLink, Globe, Rocket } from "lucide-react"
+import { Check, ExternalLink, Globe } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
 import { ButtonLink } from "@/components/button-link"
 import { usePrototype, type PortfolioTheme, type Visibility } from "@/components/prototype-store"
 import { Field, TextArea, Toggle } from "@/components/form-controls"
 import { Button } from "@/components/ui/button"
 import { Chip } from "@/components/ui-bits"
+import { Breadcrumbs } from "@/components/ui-kit/navigation"
 
 const themes: { id: PortfolioTheme; label: string; swatch: string; note: string }[] = [
-  { id: "aurora", label: "Aurora", swatch: "var(--primary)", note: "Indigo gradient, energetic and modern." },
-  { id: "minimal", label: "Minimal", swatch: "var(--foreground)", note: "Understated, content-first, monochrome." },
-  { id: "bold", label: "Bold", swatch: "var(--accent)", note: "Warm amber highlights that stand out." },
+  { id: "aurora", label: "Forest", swatch: "var(--primary)", note: "Green header, same as the rest of the site." },
+  { id: "minimal", label: "Plain", swatch: "var(--foreground)", note: "Type on paper, no colour band." },
+  { id: "bold", label: "Laterite", swatch: "var(--accent)", note: "Warm clay accents." },
 ]
 
 const visibilities: { id: Visibility; label: string; note: string }[] = [
@@ -25,11 +26,14 @@ export default function PortfolioBuilderPage() {
 
   return (
     <AppShell>
+      <div className="mb-4">
+        <Breadcrumbs items={[{ label: "Portfolio", href: "/portfolio" }, { label: "Edit" }]} />
+      </div>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight">Portfolio builder</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">Public page</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Design how your evidence-backed portfolio looks and who can see it.
+            Choose a layout and who can open the link.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -42,7 +46,7 @@ export default function PortfolioBuilderPage() {
             </Chip>
           ) : (
             <Button size="sm" onClick={publishPortfolio}>
-              <Rocket className="size-4" aria-hidden="true" /> Publish
+              Publish
             </Button>
           )}
         </div>

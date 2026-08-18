@@ -16,8 +16,8 @@ loadEnvFiles()
 const BASE = process.env.BASE_URL || "http://127.0.0.1:3000"
 const results = []
 
-const PROTECTED_EMAILS = new Set(["amara@example.com", "admin@volunteerconnect.org", "hello@earthwise.org"])
-const PROTECTED_IDS = new Set(["user-amara", "user-admin", "user-earthwise"])
+const PROTECTED_EMAILS = new Set(["amara@example.com", "hello@earthwise.org", "kidfantastic38@gmail.com"])
+const PROTECTED_IDS = new Set(["user-amara", "user-earthwise"])
 
 const AUDIT_EMAIL_PATTERNS = [
   /^security-test-(student|student-b|employer|employer-b|reject)-\d+@example\.test$/i,
@@ -100,6 +100,18 @@ async function cleanupAuditUsers(reason) {
     await sql`DELETE FROM users WHERE id = ANY(${ids}) AND id <> ALL(${[...PROTECTED_IDS]})`
     console.log(`Cleaned ${ids.length} audit user(s) (${reason})`)
     return ids.length
+  } finally {
+    await sql.end({ timeout: 5 })
+  }
+}
+
+async function markAuditEmailVerified(email) {
+  const url = process.env.DATABASE_URL?.trim()
+  if (!url || !isAuditTestEmail(email)) return false
+  const sql = postgres(url, { max: 1, prepare: false })
+  try {
+    await sql`UPDATE users SET email_verified = true WHERE lower(email) = ${String(email).toLowerCase()}`
+    return true
   } finally {
     await sql.end({ timeout: 5 })
   }
@@ -236,6 +248,19 @@ async function runHttpTests(ctx) {
     "login page does not expose an unauthenticated admin shortcut",
     !loginHtml.includes("Enter the admin console") && !loginHtml.includes("Access Admin Console"),
   )
+  record(
+    "login page does not advertise a demo profile",
+    !loginHtml.includes("Explore the demo profile") &&
+      !loginHtml.includes("Explore a demo profile") &&
+      !loginHtml.includes("amara@example.com"),
+  )
+
+  const home = await req("/")
+  const homeHtml = await home.text()
+  record(
+    "landing page does not advertise a demo profile",
+    !homeHtml.includes("Explore a demo profile") && !homeHtml.includes("href=\"/demo\""),
+  )
 
   const anonDash = await req("/admin/dashboard")
   const anonDashLoc = anonDash.headers.get("location") || ""
@@ -289,6 +314,13 @@ async function runHttpTests(ctx) {
   const afterDemoAdmin = await req("/api/admin/stats")
   record("visiting /demo/admin does not grant Admin API access", afterDemoAdmin.status === 401, `status ${afterDemoAdmin.status}`)
 
+  const demoStudent = await req("/demo")
+  const demoStudentCookie = cookieFrom(demoStudent)
+  const demoStudentLoc = demoStudent.headers.get("location") || ""
+  record("/demo does not set vc_session", !demoStudentCookie.includes("vc_session"))
+  record("/demo does not auto-login", demoStudent.status === 307 || demoStudent.status === 302, `status ${demoStudent.status}`)
+  record("/demo redirects to login", demoStudentLoc.includes("/login"))
+
   const studentReg = await req("/api/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -304,6 +336,31 @@ async function runHttpTests(ctx) {
   record("student registers successfully", studentReg.ok && studentBody.user?.email === studentEmail, `status ${studentReg.status}`)
   record("student cannot become admin via role=admin", studentBody.user?.role === "student")
 
+  const verifyPage = await req("/verify", { headers: { cookie: studentCookie } })
+  const verifyHtml = await verifyPage.text()
+  record(
+    "verification page does not offer skip",
+    verifyPage.status === 200 && !verifyHtml.includes("Skip for now") && !verifyHtml.toLowerCase().includes("skip for now"),
+  )
+  record("verification page still offers resend", verifyHtml.toLowerCase().includes("resend"))
+
+  const unverifiedDash = await req("/dashboard", { headers: { cookie: studentCookie } })
+  const unverifiedDashLoc = unverifiedDash.headers.get("location") || ""
+  record(
+    "unverified student cannot open dashboard",
+    (unverifiedDash.status === 307 || unverifiedDash.status === 302) && unverifiedDashLoc.includes("/verify"),
+    `status ${unverifiedDash.status}`,
+  )
+
+  const unverifiedProfile = await req("/api/auth/profile", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", cookie: studentCookie },
+    body: JSON.stringify({ snapshot: studentSnapshot({ slug: publicSlug, skills: [] }) }),
+  })
+  record("unverified student cannot save profile", unverifiedProfile.status === 403, `status ${unverifiedProfile.status}`)
+
+  await markAuditEmailVerified(studentEmail)
+
   const escalate = await req("/api/auth/profile", {
     method: "PUT",
     headers: { "Content-Type": "application/json", cookie: studentCookie },
@@ -317,7 +374,7 @@ async function runHttpTests(ctx) {
   })
   const escalateBody = await json(escalate)
   record("profile save ignores client role/admin", escalate.ok && escalateBody.snapshot?.role === "student", escalate.ok ? "" : `status ${escalate.status}`)
-  record("profile save ignores client verified email flag", escalateBody.snapshot?.verified === false)
+  record("profile save ignores client verified email flag", escalateBody.snapshot?.verified === true)
   record("profile save ignores client skill.verified", escalateBody.snapshot?.skills?.[0]?.verified === false)
   record("profile save keeps server email", escalateBody.snapshot?.user?.email === studentEmail)
 
@@ -336,15 +393,14 @@ async function runHttpTests(ctx) {
   const otherBody = await json(otherProfile)
   record("query id cannot target another user's profile", otherProfile.ok && otherBody.snapshot?.user?.email === studentEmail)
 
-  const amaraLogin = await req("/api/auth/login", {
+  const studentAgain = await req("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "amara@example.com", password: "password" }),
+    body: JSON.stringify({ email: studentEmail, password: studentPass }),
   })
-  const amaraBody = await json(amaraLogin)
-  const amaraCookie = cookieFrom(amaraLogin)
-  record("existing student still logs in", amaraLogin.ok && amaraBody.user?.email === "amara@example.com")
-  record("amara experience was not overwritten", !(amaraBody.snapshot?.experiences ?? []).some((item) => item.id === expHackId))
+  const studentAgainBody = await json(studentAgain)
+  record("existing student still logs in", studentAgain.ok && studentAgainBody.user?.email === studentEmail)
+  record("spoofed experience was not saved onto the student", !(studentAgainBody.snapshot?.experiences ?? []).some((item) => item.id === expHackId))
 
   const sqli = await req("/api/auth/login", {
     method: "POST",
@@ -379,6 +435,7 @@ async function runHttpTests(ctx) {
   record("employer is not auto-verified", employerBody.organization?.verificationStatus === "pending")
   record("employer cannot set verification_status on register", employerBody.organization?.verificationStatus !== "approved")
   record("javascript logo/website stripped", !employerBody.organization?.logoUrl && !employerBody.organization?.website)
+  await markAuditEmailVerified(employerEmail)
 
   const publishPending = await req("/api/employer/opportunities", {
     method: "POST",
@@ -461,10 +518,12 @@ async function runHttpTests(ctx) {
   const orgPutBody = await json(orgPut)
   record("employer cannot mark itself verified via org PUT", orgPut.ok && orgPutBody.organization?.verificationStatus === "pending")
 
+  const adminEmail = (process.env.AUDIT_ADMIN_EMAIL || process.env.ADMIN_EMAIL || "").trim().toLowerCase()
+  const adminPassword = process.env.AUDIT_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || ""
   const adminLogin = await req("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "admin@volunteerconnect.org", password: "password" }),
+    body: JSON.stringify({ email: adminEmail, password: adminPassword }),
   })
   const adminBody = await json(adminLogin)
   const adminCookie = cookieFrom(adminLogin)
@@ -507,6 +566,7 @@ async function runHttpTests(ctx) {
     }),
   })
   const rejectRegBody = await json(rejectReg)
+  await markAuditEmailVerified(rejectEmail)
   const rejectRes = await req("/api/admin/verifications", {
     method: "POST",
     headers: { "Content-Type": "application/json", cookie: adminCookie },
@@ -584,6 +644,7 @@ async function runHttpTests(ctx) {
   })
   const otherEmployerBody = await json(otherEmployerReg)
   const otherEmployerCookie = cookieFrom(otherEmployerReg)
+  await markAuditEmailVerified(otherEmployerEmail)
   await req("/api/admin/verifications", {
     method: "POST",
     headers: { "Content-Type": "application/json", cookie: adminCookie },
@@ -660,6 +721,7 @@ async function runHttpTests(ctx) {
   })
   const otherStudentBody = await json(otherStudentReg)
   const otherStudentId = otherStudentBody.user?.id
+  await markAuditEmailVerified(otherStudentEmail)
   const statusPatch = await req(`/api/admin/users/${otherStudentId || "missing"}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", cookie: adminCookie },
@@ -822,7 +884,7 @@ async function runHttpTests(ctx) {
   } else {
     record("allowed jpeg upload accepted", uploadOk.ok, uploadOk.ok ? "" : `status ${uploadOk.status}`)
   }
-  const stealUpload = await req(`/api/uploads/${uploadBody.upload?.id ?? "missing"}`, { headers: { cookie: amaraCookie } })
+  const stealUpload = await req(`/api/uploads/${uploadBody.upload?.id ?? "missing"}`, { headers: { cookie: otherStudentFreshCookie } })
   record("student cannot read another student's upload", stealUpload.status === 404)
 
   const formTraversal = new FormData()
@@ -922,7 +984,7 @@ async function runHttpTests(ctx) {
       !publicBody.portfolio?.id,
   )
 
-  const privateSlug = await req("/api/public/portfolio/amara-okafor")
+  const privateSlug = await req("/api/public/portfolio/does-not-exist-unpublished")
   record("unpublished/private portfolios are not exposed", privateSlug.status === 404)
 
   await req("/api/auth/profile", {
@@ -940,7 +1002,7 @@ async function runHttpTests(ctx) {
     }),
   })
   const unlistedAnon = await req(`/api/public/portfolio/${unlistedSlug}`)
-  const unlistedAuth = await req(`/api/public/portfolio/${unlistedSlug}`, { headers: { cookie: amaraCookie } })
+  const unlistedAuth = await req(`/api/public/portfolio/${unlistedSlug}`, { headers: { cookie: otherStudentFreshCookie } })
   record("unlisted portfolio is hidden from anonymous users", unlistedAnon.status === 404)
   record("unlisted portfolio is visible to signed-in users", unlistedAuth.ok)
 

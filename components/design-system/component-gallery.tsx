@@ -276,7 +276,7 @@ export function ComponentGallery() {
               <div className="space-y-4">
                 <Subhead>Text inputs</Subhead>
                 <Field label="Full name" htmlFor="demo-name" hint="As it should appear on your CV.">
-                  <Input id="demo-name" placeholder="Amara Okafor" />
+                  <Input id="demo-name" placeholder="Nehemiah Williams" />
                 </Field>
                 <Field label="Email" htmlFor="demo-email" error="Please enter a valid email address.">
                   <Input id="demo-email" defaultValue="not-an-email" aria-invalid />

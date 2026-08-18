@@ -77,7 +77,7 @@ export default function OrganizationProfilePage() {
           </Field>
         </div>
         <Field label="Contact phone" htmlFor="phone">
-          <Input id="phone" type="tel" value={form.phone} onChange={set("phone")} required />
+          <Input id="phone" type="tel" value={form.phone} onChange={set("phone")} required placeholder="+232 76 000 555" />
         </Field>
         <Field label="Website" htmlFor="website">
           <Input id="website" type="url" value={form.website} onChange={set("website")} />

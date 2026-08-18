@@ -5,6 +5,7 @@ import { getPublicPortfolioBySlug } from "@/lib/auth/public-portfolio"
 import { readSession } from "@/lib/auth/session"
 import { Chip, SkillBar, VerifiedBadge } from "@/components/ui-bits"
 import { Logo } from "@/components/logo"
+import Link from "next/link"
 
 const themeAccent: Record<string, { accent: string; heroFrom: string }> = {
   aurora: { accent: "var(--primary)", heroFrom: "from-secondary/60" },
@@ -29,7 +30,7 @@ export default async function PublicPortfolioPage({ params }: { params: Promise<
   return (
     <div className="min-h-dvh bg-background">
       <header className={`border-b border-border bg-gradient-to-b ${theme.heroFrom} to-background`}>
-        <div className="mx-auto max-w-4xl px-4 py-12">
+        <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
           <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
             <div
               className="grid size-20 shrink-0 place-items-center rounded-2xl font-display text-2xl font-bold text-primary-foreground"
@@ -154,7 +155,11 @@ export default async function PublicPortfolioPage({ params }: { params: Promise<
                   {portfolio.education.map((item) => (
                     <div key={`${item.institution}-${item.qualification}`}>
                       <p className="font-medium text-card-foreground">{item.qualification}</p>
-                      <p className="text-sm text-muted-foreground">{item.institution}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.institution}
+                        {item.field ? ` · ${item.field}` : ""}
+                        {item.location ? ` · ${item.location}` : ""}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -164,15 +169,17 @@ export default async function PublicPortfolioPage({ params }: { params: Promise<
               <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
                 <VerifiedBadge label="Evidence-backed" />
                 <p className="mt-2 text-sm text-card-foreground/80">
-                  Skills on this portfolio can be self-declared, evidence-backed, or officially verified by the platform.
+                  Skills on this page may be self-listed, attached to evidence, or confirmed.
                 </p>
               </div>
             ) : null}
           </aside>
         </div>
         <footer className="mt-12 flex items-center justify-center gap-2 border-t border-border pt-6 text-sm text-muted-foreground">
-          <Logo className="text-foreground" />
-          <span>· Portfolio built with VOLUNTEER CONNECT</span>
+          <Link href="/" aria-label="Volunteer Connect home">
+            <Logo className="text-foreground" />
+          </Link>
+          <span>· Volunteer Connect</span>
         </footer>
       </main>
     </div>

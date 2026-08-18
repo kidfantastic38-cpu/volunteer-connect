@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { BadgeCheck, Lightbulb, Sparkles, TrendingUp } from "lucide-react"
+import { BadgeCheck, Lightbulb, ListChecks, TrendingUp } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
 import { usePrototype } from "@/components/prototype-store"
 import { ButtonLink } from "@/components/button-link"
@@ -47,25 +47,25 @@ export default function SkillsPage() {
   return (
     <AppShell>
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold tracking-tight">Skills analysis</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">Skills</h1>
         <p className="text-sm text-muted-foreground text-pretty">
-          A live view of the skills your experiences have generated — and where to grow next.
+          Listed from your profile, with evidence where you added it.
         </p>
       </div>
 
       {skills.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center">
-          <p className="font-display text-lg font-semibold">No skills yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Add experiences and skills to generate your analysis.</p>
+          <p className="font-display text-lg font-semibold">No skills listed</p>
+          <p className="mt-1 text-sm text-muted-foreground">Add experience on your profile, then name the skills it used.</p>
           <ButtonLink href="/profile" className="mt-4">
-            Build my profile
+            Go to profile
           </ButtonLink>
         </div>
       ) : (
         <div className="space-y-6">
           {/* Summary */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard icon={<Sparkles className="size-5" />} label="Total skills" value={String(skills.length)} />
+            <StatCard icon={<ListChecks className="size-5" />} label="Listed" value={String(skills.length)} />
             <StatCard
               icon={<BadgeCheck className="size-5" />}
               label="Verified"
@@ -102,13 +102,13 @@ export default function SkillsPage() {
 
             {/* Gap analysis */}
             <section className="rounded-2xl border border-border bg-card p-6">
-              <h2 className="font-display text-lg font-semibold">Skills to develop</h2>
+              <h2 className="font-display text-lg font-semibold">Asked for on current openings</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                In demand across your matched opportunities.
+                Skills that appear on openings and are not yet on your record.
               </p>
               {gaps.length === 0 ? (
-                <p className="mt-4 text-sm text-success">
-                  You cover every skill your current matches ask for. Impressive.
+                <p className="mt-4 text-sm text-muted-foreground">
+                  None of the current openings ask for a skill you have not listed.
                 </p>
               ) : (
                 <ul className="mt-4 space-y-3">
@@ -121,16 +121,16 @@ export default function SkillsPage() {
                 </ul>
               )}
               <ButtonLink href="/opportunities" variant="outline" size="sm" className="mt-5 w-full justify-center">
-                Find opportunities to build these
+                See openings
               </ButtonLink>
             </section>
           </div>
 
           {/* All skills with provenance */}
           <section className="rounded-2xl border border-border bg-card p-6">
-            <h2 className="font-display text-lg font-semibold">Every skill, with its evidence</h2>
+            <h2 className="font-display text-lg font-semibold">Skills and where they come from</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Each skill is traced back to the experience that built it.
+              Each skill is tied to an experience or project you added.
             </p>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               {skills.map((s) => (

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Briefcase } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
-import { AdminConfirm, AdminError, AdminHeader, AdminLoading } from "@/components/admin-ui"
+import { AdminConfirm, AdminError, AdminHeader, AdminLoading, AdminStack, AdminCard } from "@/components/admin-ui"
 import { Button } from "@/components/ui/button"
 import { Chip, EmptyState } from "@/components/ui-bits"
 import { adminApi, type AdminOppRow } from "@/lib/admin/client"
@@ -35,7 +35,29 @@ export default function AdminOpportunitiesPage() {
       ) : rows.length === 0 ? (
         <EmptyState icon={<Briefcase className="size-6" />} title="No opportunities" description="Published and draft listings will appear here." />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+        <AdminStack
+          mobile={rows.map((row) => (
+            <AdminCard key={row.id}>
+              <p className="font-medium text-pretty">{row.title}</p>
+              <p className="text-sm text-muted-foreground">{row.organizationName}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Chip>{row.status}</Chip>
+                <span className="text-xs capitalize text-muted-foreground">{row.type}</span>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {new Date(row.createdAt).toLocaleDateString()} · Closes {row.deadline || "—"} · {row.applicants} applications
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={() => setPending({ id: row.id, status: "closed", title: row.title })}>
+                  Close
+                </Button>
+                <Button variant="ghost" onClick={() => setPending({ id: row.id, status: "archived", title: row.title })}>
+                  Archive
+                </Button>
+              </div>
+            </AdminCard>
+          ))}
+          desktop={
           <table className="w-full min-w-[800px] text-left text-sm">
             <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -74,7 +96,8 @@ export default function AdminOpportunitiesPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          }
+        />
       )}
       <AdminConfirm
         open={!!pending}

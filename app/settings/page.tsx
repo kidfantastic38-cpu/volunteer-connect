@@ -36,7 +36,7 @@ export default function SettingsPage() {
     if (pw.next.length < 6) return setPwMsg({ tone: "err", text: "New password must be at least 6 characters." })
     if (pw.next !== pw.confirm) return setPwMsg({ tone: "err", text: "New passwords do not match." })
     if (!accountId) {
-      setPwMsg({ tone: "err", text: "This demo session has no stored password. Register or log in with email to manage a password." })
+      setPwMsg({ tone: "err", text: "Sign in with email to manage a password." })
       return
     }
     void apiChangePassword({ current: pw.current, next: pw.next })
@@ -178,7 +178,7 @@ export default function SettingsPage() {
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         title="Delete your account?"
-        description="This will end your prototype session and clear all progress."
+        description="This will permanently delete your account and cannot be undone."
       >
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={() => setConfirmDelete(false)}>

@@ -31,8 +31,8 @@ export default function ApplicationsPage() {
         <EmptyState
           icon={<Briefcase className="size-6" aria-hidden="true" />}
           title="No applications yet"
-          description="Save and apply to opportunities and they'll show up here in a simple pipeline."
-          action={<ButtonLink href="/opportunities">Browse opportunities</ButtonLink>}
+          description="Save or apply to an opening and it will appear here."
+          action={<ButtonLink href="/opportunities">See openings</ButtonLink>}
         />
       </AppShell>
     )

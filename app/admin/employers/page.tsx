@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Building2 } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
-import { AdminConfirm, AdminError, AdminHeader, AdminLoading } from "@/components/admin-ui"
+import { AdminConfirm, AdminError, AdminHeader, AdminLoading, AdminStack, AdminCard } from "@/components/admin-ui"
 import { OrgTrustBadge } from "@/components/org-badge"
 import { Modal } from "@/components/modal"
 import { Button } from "@/components/ui/button"
@@ -52,7 +52,28 @@ export default function AdminEmployersPage() {
       ) : rows.length === 0 ? (
         <EmptyState icon={<Building2 className="size-6" />} title="No employers yet" description="Employer registrations will appear here." />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+        <AdminStack
+          mobile={rows.map((row) => (
+            <AdminCard key={row.id}>
+              <p className="font-medium">{row.name}</p>
+              <p className="text-sm text-muted-foreground">{row.ownerName}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <OrgTrustBadge status={row.verificationStatus as "pending" | "approved" | "rejected" | "more_info"} />
+                {row.suspended ? <p className="text-xs text-destructive">Suspended</p> : null}
+              </div>
+              <p className="mt-2 text-sm">{row.organizationEmail}</p>
+              <p className="text-xs text-muted-foreground">{row.organizationType} · {new Date(row.createdAt).toLocaleDateString()}</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={() => openDetail(row)}>
+                  View
+                </Button>
+                <Button variant={row.suspended ? "outline" : "ghost"} disabled={busy === row.id} onClick={() => setPending(row)}>
+                  {row.suspended ? "Unsuspend" : "Suspend"}
+                </Button>
+              </div>
+            </AdminCard>
+          ))}
+          desktop={
           <table className="w-full min-w-[800px] text-left text-sm">
             <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -94,7 +115,8 @@ export default function AdminEmployersPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          }
+        />
       )}
       <Modal open={!!detail} onClose={() => setDetail(null)} title={detail?.name || "Organization"}>
         {detail ? (

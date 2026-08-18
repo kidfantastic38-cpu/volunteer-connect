@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { eq } from "drizzle-orm"
 import { defaultProfileSnapshot } from "@/lib/auth/defaults"
 import type { AuthUser, ProfileSnapshot } from "@/lib/auth/types"
@@ -11,6 +12,43 @@ import {
   projects,
   skills,
 } from "@/lib/db/schema"
+import { safeId } from "@/lib/security/validate"
+
+export type OwnedChildIds = {
+  education: Set<string>
+  experiences: Set<string>
+  projects: Set<string>
+  achievements: Set<string>
+  skills: Set<string>
+  notifications: Set<string>
+}
+
+export async function ownedChildIds(userId: string): Promise<OwnedChildIds> {
+  const db = getDb()
+  const [eduRows, expRows, projRows, achRows, skillRows, noteRows] = await Promise.all([
+    db.select({ id: education.id }).from(education).where(eq(education.userId, userId)),
+    db.select({ id: experiences.id }).from(experiences).where(eq(experiences.userId, userId)),
+    db.select({ id: projects.id }).from(projects).where(eq(projects.userId, userId)),
+    db.select({ id: achievements.id }).from(achievements).where(eq(achievements.userId, userId)),
+    db.select({ id: skills.id }).from(skills).where(eq(skills.userId, userId)),
+    db.select({ id: notifications.id }).from(notifications).where(eq(notifications.userId, userId)),
+  ])
+  return {
+    education: new Set(eduRows.map((row) => row.id)),
+    experiences: new Set(expRows.map((row) => row.id)),
+    projects: new Set(projRows.map((row) => row.id)),
+    achievements: new Set(achRows.map((row) => row.id)),
+    skills: new Set(skillRows.map((row) => row.id)),
+    notifications: new Set(noteRows.map((row) => row.id)),
+  }
+}
+
+/** Keep IDs the caller already owns. Never reuse another user's or invented IDs. */
+export function assignOwnedId(candidate: unknown, owned: Set<string>): string {
+  const id = safeId(candidate)
+  if (id && owned.has(id)) return id
+  return randomUUID()
+}
 
 function now() {
   return new Date().toISOString()
@@ -197,17 +235,17 @@ async function replaceChildren(userId: string, snapshot: ProfileSnapshot, stamp:
   const edu = Array.isArray(snapshot.education) ? snapshot.education : []
   if (edu.length) {
     await db.insert(education).values(
-      edu.map((item, index) => {
+      edu.map((item) => {
         const row = rec(item)
         return {
-          id: String(row.id ?? `edu-${index}`),
+          id: safeId(row.id) || randomUUID(),
           userId,
           institution: String(row.institution ?? ""),
           qualification: String(row.qualification ?? ""),
           field: String(row.field ?? ""),
           startDate: String(row.start ?? ""),
           endDate: String(row.end ?? ""),
-          details: { grade: row.grade, description: row.description },
+          details: { grade: row.grade, description: row.description, location: row.location },
           createdAt: stamp,
           updatedAt: stamp,
         }
@@ -218,10 +256,10 @@ async function replaceChildren(userId: string, snapshot: ProfileSnapshot, stamp:
   const exp = Array.isArray(snapshot.experiences) ? snapshot.experiences : []
   if (exp.length) {
     await db.insert(experiences).values(
-      exp.map((item, index) => {
+      exp.map((item) => {
         const row = rec(item)
         return {
-          id: String(row.id ?? `exp-${index}`),
+          id: safeId(row.id) || randomUUID(),
           userId,
           type: String(row.type ?? "volunteer"),
           title: String(row.role ?? row.title ?? ""),
@@ -247,10 +285,10 @@ async function replaceChildren(userId: string, snapshot: ProfileSnapshot, stamp:
   const proj = Array.isArray(snapshot.projects) ? snapshot.projects : []
   if (proj.length) {
     await db.insert(projects).values(
-      proj.map((item, index) => {
+      proj.map((item) => {
         const row = rec(item)
         return {
-          id: String(row.id ?? `proj-${index}`),
+          id: safeId(row.id) || randomUUID(),
           userId,
           title: String(row.title ?? ""),
           description: String(row.description ?? ""),
@@ -267,10 +305,10 @@ async function replaceChildren(userId: string, snapshot: ProfileSnapshot, stamp:
   const ach = Array.isArray(snapshot.achievements) ? snapshot.achievements : []
   if (ach.length) {
     await db.insert(achievements).values(
-      ach.map((item, index) => {
+      ach.map((item) => {
         const row = rec(item)
         return {
-          id: String(row.id ?? `ach-${index}`),
+          id: safeId(row.id) || randomUUID(),
           userId,
           title: String(row.title ?? ""),
           description: String(row.description ?? ""),
@@ -286,10 +324,10 @@ async function replaceChildren(userId: string, snapshot: ProfileSnapshot, stamp:
   const sk = Array.isArray(snapshot.skills) ? snapshot.skills : []
   if (sk.length) {
     await db.insert(skills).values(
-      sk.map((item, index) => {
+      sk.map((item) => {
         const row = rec(item)
         return {
-          id: String(row.id ?? `sk-${index}`),
+          id: safeId(row.id) || randomUUID(),
           userId,
           name: String(row.name ?? ""),
           category: String(row.category ?? "Communication"),
@@ -305,10 +343,10 @@ async function replaceChildren(userId: string, snapshot: ProfileSnapshot, stamp:
   const notes = Array.isArray(snapshot.notifications) ? snapshot.notifications : []
   if (notes.length) {
     await db.insert(notifications).values(
-      notes.map((item, index) => {
+      notes.map((item) => {
         const row = rec(item)
         return {
-          id: String(row.id ?? `nt-${index}`),
+          id: safeId(row.id) || randomUUID(),
           userId,
           type: String(row.kind ?? "system"),
           title: String(row.title ?? ""),

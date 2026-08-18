@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { BookOpen, Check, ChevronDown, LifeBuoy, Mail, MessageCircle } from "lucide-react"
+import { Check, ChevronDown, Mail } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
 import { Field, Input, Textarea } from "@/components/form-controls"
 import { Button } from "@/components/ui/button"
@@ -9,23 +9,23 @@ import { Button } from "@/components/ui/button"
 const faqs = [
   {
     q: "How are my skills verified?",
-    a: "When you add evidence — a reference, certificate or photo — the person or organisation you name can confirm it. Verified skills carry a badge and boost your opportunity matches.",
+    a: "When you attach a certificate, photo, or named reference, that person or organisation can confirm it. Confirmed skills are marked on your record and count more in the match score.",
   },
   {
     q: "How is my match score calculated?",
-    a: "We compare the skills an opportunity needs against the skills in your profile, weighting verified skills and your proficiency level, plus your stated interests. The stronger and more relevant your evidence, the higher the score.",
+    a: "The score compares skills listed on an opening with skills on your record. Confirmed skills and the level you set count more, along with the interests you named.",
   },
   {
-    q: "Can I use my CV and portfolio outside the platform?",
-    a: "Yes. Your CV can be downloaded or printed, and your portfolio has a shareable public link you control from Privacy settings.",
+    q: "Can I use my CV and public page outside this site?",
+    a: "Yes. Print or save the CV, and share the public page from Privacy settings.",
   },
   {
-    q: "Do employers see my whole profile?",
-    a: "Only what you allow. You control employer visibility and which evidence is shared from Privacy & portfolio visibility.",
+    q: "Do organisations see my whole profile?",
+    a: "Only what you allow. You control visibility and which evidence is shared from Privacy settings.",
   },
   {
     q: "Is volunteering treated the same as work experience?",
-    a: "Absolutely. VolunteerConnect is built to give volunteering, projects and leadership the same weight as formal work — because the skills are just as real.",
+    a: "Yes. Volunteering, projects, and leadership sit on the same record as paid work. Organisations see what you listed, not a ranking of “real” versus “informal” experience.",
   },
 ]
 
@@ -45,15 +45,8 @@ export default function HelpPage() {
   return (
     <AppShell>
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold tracking-tight">Help &amp; support</h1>
-        <p className="text-sm text-muted-foreground">Answers to common questions, or reach our team directly.</p>
-      </div>
-
-      {/* Quick links */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <QuickLink icon={<BookOpen className="size-5" />} title="Guides" text="Step-by-step help getting started." />
-        <QuickLink icon={<MessageCircle className="size-5" />} title="Community" text="Tips from other young people." />
-        <QuickLink icon={<LifeBuoy className="size-5" />} title="Status" text="All systems operational." />
+        <h1 className="font-display text-2xl font-semibold tracking-tight">Help</h1>
+        <p className="text-sm text-muted-foreground">Common questions, or write to the team.</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -128,17 +121,5 @@ export default function HelpPage() {
         </section>
       </div>
     </AppShell>
-  )
-}
-
-function QuickLink({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
-  return (
-    <div className="flex items-start gap-3 rounded-2xl border border-border bg-card p-5">
-      <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">{icon}</span>
-      <div>
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="text-sm text-muted-foreground text-pretty">{text}</p>
-      </div>
-    </div>
   )
 }

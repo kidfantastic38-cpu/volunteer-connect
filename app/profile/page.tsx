@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/modal"
 import { Field, TextInput, TextArea } from "@/components/form-controls"
 import { Chip } from "@/components/ui-bits"
+import { SelectWithOther } from "@/components/select-with-other"
+import { LOCATION_OPTIONS } from "@/lib/profile/field-options"
 import {
   EducationSection,
   ExperienceSection,
@@ -55,7 +57,7 @@ export default function ProfilePage() {
     <AppShell>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">Your profile</h1>
+          <h1 className="font-display text-2xl font-semibold text-foreground">Profile</h1>
           <p className="text-sm text-muted-foreground">
             Everything here powers your CV, portfolio and opportunity matches.
           </p>
@@ -128,13 +130,20 @@ export default function ProfilePage() {
       >
         <form onSubmit={submit} className="flex flex-col gap-4">
           <Field label="Full name" htmlFor="pf-name">
-            <TextInput id="pf-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <TextInput id="pf-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nehemiah Williams" />
           </Field>
           <Field label="Headline" htmlFor="pf-headline" hint="A short line that sums you up.">
             <TextInput id="pf-headline" value={form.headline} onChange={(e) => setForm({ ...form, headline: e.target.value })} placeholder="Aspiring community leader" />
           </Field>
           <Field label="Location" htmlFor="pf-loc">
-            <TextInput id="pf-loc" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Manchester, UK" />
+            <SelectWithOther
+              id="pf-loc"
+              value={form.location}
+              onChange={(location) => setForm({ ...form, location })}
+              options={LOCATION_OPTIONS}
+              placeholder="Select a location"
+              otherPlaceholder="Enter your location"
+            />
           </Field>
           <Field label="Personal statement" htmlFor="pf-about">
             <TextArea id="pf-about" value={form.about} onChange={(e) => setForm({ ...form, about: e.target.value })} placeholder="Tell your story in a few sentences." />
