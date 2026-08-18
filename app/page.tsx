@@ -55,14 +55,15 @@ export default function Page() {
               </ButtonLink>
             </div>
           </div>
-          <figure>
-            <div className="relative aspect-[16/10] overflow-hidden border border-border sm:aspect-[4/3]">
+          <figure className="min-w-0 w-full">
+            <div className="relative aspect-[16/10] w-full overflow-hidden border border-border sm:aspect-[4/3]">
               <Image
-                src="/volunteer-connect-youth.jpg"
-                alt="Young people participating in a community activity"
+                src="/volunteer-connect-hero.jpg"
+                alt="Hands of several people forming a circle, each holding soil and a young seedling"
                 fill
-                className="object-cover object-[50%_20%]"
+                className="object-cover object-center"
                 sizes="(min-width: 768px) 42vw, 100vw"
+                quality={85}
                 priority
               />
             </div>
@@ -97,11 +98,28 @@ export default function Page() {
 
       <section id="record" className="border-t border-border bg-card/50">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <div className="max-w-xl">
-            <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">What goes on your record</h2>
-            <p className="mt-3 text-muted-foreground text-pretty">
-              One place for school, volunteering, and projects — then a CV and a page you can share when you apply.
-            </p>
+          <div className="grid items-start gap-8 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] md:gap-12">
+            <div className="max-w-xl">
+              <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">What goes on your record</h2>
+              <p className="mt-3 text-muted-foreground text-pretty">
+                One place for school, volunteering, and projects — then a CV and a page you can share when you apply.
+              </p>
+            </div>
+            <figure className="min-w-0 w-full">
+              <div className="relative aspect-[16/10] w-full overflow-hidden border border-border sm:aspect-[3/2]">
+                <Image
+                  src="/volunteer-connect-community.jpg"
+                  alt="Volunteers standing in a circle with their hands stacked together"
+                  fill
+                  className="object-cover object-center"
+                  sizes="(min-width: 768px) 38vw, 100vw"
+                  quality={85}
+                />
+              </div>
+              <figcaption className="mt-2.5 text-xs leading-relaxed text-muted-foreground">
+                Volunteering and group projects sit on the record with school and paid work.
+              </figcaption>
+            </figure>
           </div>
           <dl className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-2">
             {recordItems.map((item) => (
