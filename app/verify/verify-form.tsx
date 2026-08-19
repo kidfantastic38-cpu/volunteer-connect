@@ -8,8 +8,6 @@ import { usePrototype } from "@/components/prototype-store"
 import { apiSendVerifyEmail } from "@/lib/auth/client"
 import { cn } from "@/lib/utils"
 
-const DEMO_CODE = "481920"
-
 export function VerifyForm() {
   const router = useRouter()
   const params = useSearchParams()
@@ -108,9 +106,8 @@ export function VerifyForm() {
         {mailFailed
           ? "Your account was created, but we could not send the verification email. Please try resending the code."
           : <>
-              We sent a 6-digit code to{" "}
-              <span className="font-medium text-foreground">{user?.email || "your email"}</span>. Enter it below to
-              activate your account.
+              Enter the verification code sent to{" "}
+              <span className="font-medium text-foreground">{user?.email || "your email"}</span>.
             </>}
       </p>
 
@@ -148,18 +145,12 @@ export function VerifyForm() {
           type="button"
           onClick={resend}
           disabled={seconds > 0}
-          className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
+          className="inline-flex min-h-11 items-center gap-1.5 font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30 disabled:text-muted-foreground disabled:no-underline"
         >
           <RefreshCw className="size-3.5" aria-hidden="true" />
           {resent ? "Code resent" : seconds > 0 ? `Resend in ${seconds}s` : "Resend code"}
         </button>
       </div>
-
-      {process.env.NODE_ENV !== "production" ? (
-        <p className="mt-6 rounded-lg bg-muted px-3 py-2 text-center text-xs text-muted-foreground">
-          Demo code: <span className="font-semibold tracking-widest text-foreground">{DEMO_CODE}</span>
-        </p>
-      ) : null}
     </div>
   )
 }

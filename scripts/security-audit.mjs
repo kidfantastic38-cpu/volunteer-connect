@@ -7,8 +7,11 @@
  * Blob-dependent checks are marked NOT RUN when production Blob storage is unset.
  */
 import postgres from "postgres"
+import fs from "node:fs"
+import path from "node:path"
 import { detectFileKind, validateUpload } from "../lib/security/files.ts"
 import { safeHttpUrl } from "../lib/security/urls.ts"
+import { allowDemoOtp } from "../lib/runtime/env.ts"
 import { loadEnvFiles } from "./load-env.mjs"
 
 loadEnvFiles()
@@ -159,6 +162,15 @@ function studentSnapshot(input) {
   }
 }
 
+function leakedOtp(body) {
+  const raw = JSON.stringify(body ?? {})
+  if (raw.includes("481920")) return true
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, "otp")) return true
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, "demoOtp")) return true
+  if (typeof (body ?? {}).code === "string" && /^\d{6}$/.test(body.code)) return true
+  return false
+}
+
 async function unitTests() {
   record("magic bytes detect jpeg", detectFileKind(jpegBytes()) === "jpeg")
   record("magic bytes detect pdf", detectFileKind(pdfBytes()) === "pdf")
@@ -171,6 +183,46 @@ async function unitTests() {
   record("javascript: URL rejected", safeHttpUrl("javascript:alert(1)") === "")
   record("data: URL rejected", safeHttpUrl("data:text/html;base64,PHNjcmlwdD4=") === "")
   record("https URL allowed", safeHttpUrl("https://earthwise.example/logo.png").startsWith("https://"))
+
+  const verifyFormSrc = fs.readFileSync(path.join(process.cwd(), "app/verify/verify-form.tsx"), "utf8")
+  const verifyPageSrc = fs.readFileSync(path.join(process.cwd(), "app/verify/page.tsx"), "utf8")
+  record(
+    "verification client form does not render demo code",
+    !verifyFormSrc.includes("Demo code") && !verifyFormSrc.includes("481920") && !verifyFormSrc.includes("DEMO_CODE"),
+  )
+  record(
+    "demo code on verify page is gated by allowDemoOtp",
+    verifyPageSrc.includes("allowDemoOtp") && verifyPageSrc.includes("showDemoCode"),
+  )
+
+  const envSnap = {
+    VERCEL: process.env.VERCEL,
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    NODE_ENV: process.env.NODE_ENV,
+    ALLOW_DEMO_OTP: process.env.ALLOW_DEMO_OTP,
+  }
+  process.env.VERCEL = "1"
+  process.env.VERCEL_ENV = "production"
+  process.env.NODE_ENV = "production"
+  process.env.ALLOW_DEMO_OTP = "true"
+  record("demo OTP is disabled on Vercel even if ALLOW_DEMO_OTP=true", allowDemoOtp() === false)
+  delete process.env.VERCEL
+  process.env.VERCEL_ENV = "development"
+  process.env.NODE_ENV = "development"
+  process.env.ALLOW_DEMO_OTP = "true"
+  record("demo OTP works in development only when explicitly enabled", allowDemoOtp() === true)
+  process.env.ALLOW_DEMO_OTP = "false"
+  record("demo OTP is off in development when not explicitly enabled", allowDemoOtp() === false)
+  delete process.env.ALLOW_DEMO_OTP
+  record("demo OTP is off in development when ALLOW_DEMO_OTP is unset", allowDemoOtp() === false)
+  if (envSnap.VERCEL === undefined) delete process.env.VERCEL
+  else process.env.VERCEL = envSnap.VERCEL
+  if (envSnap.VERCEL_ENV === undefined) delete process.env.VERCEL_ENV
+  else process.env.VERCEL_ENV = envSnap.VERCEL_ENV
+  if (envSnap.NODE_ENV === undefined) delete process.env.NODE_ENV
+  else process.env.NODE_ENV = envSnap.NODE_ENV
+  if (envSnap.ALLOW_DEMO_OTP === undefined) delete process.env.ALLOW_DEMO_OTP
+  else process.env.ALLOW_DEMO_OTP = envSnap.ALLOW_DEMO_OTP
 }
 
 async function httpTests() {
@@ -335,6 +387,10 @@ async function runHttpTests(ctx) {
   const studentCookie = cookieFrom(studentReg)
   record("student registers successfully", studentReg.ok && studentBody.user?.email === studentEmail, `status ${studentReg.status}`)
   record("student cannot become admin via role=admin", studentBody.user?.role === "student")
+  record(
+    "register response does not expose OTP",
+    !leakedOtp(studentBody) && !("otp" in studentBody) && !("code" in studentBody) && !("demoOtp" in studentBody) && !("demo" in studentBody),
+  )
 
   const verifyPage = await req("/verify", { headers: { cookie: studentCookie } })
   const verifyHtml = await verifyPage.text()
@@ -343,6 +399,32 @@ async function runHttpTests(ctx) {
     verifyPage.status === 200 && !verifyHtml.includes("Skip for now") && !verifyHtml.toLowerCase().includes("skip for now"),
   )
   record("verification page still offers resend", verifyHtml.toLowerCase().includes("resend"))
+  record(
+    "verification page copy asks for the emailed code",
+    verifyHtml.toLowerCase().includes("verification code sent") || verifyHtml.toLowerCase().includes("enter the verification code"),
+  )
+
+  const sendRes = await req("/api/auth/verify-email/send", {
+    method: "POST",
+    headers: { cookie: studentCookie },
+  })
+  const sendBody = await json(sendRes)
+  record(
+    "verify-email send does not expose OTP",
+    sendRes.ok && !leakedOtp(sendBody) && !("otp" in sendBody) && !("code" in sendBody) && !("demoOtp" in sendBody),
+  )
+  record("verify-email send demo flag is boolean only", sendBody.demo === undefined || typeof sendBody.demo === "boolean")
+
+  const verifyAttempt = await req("/api/auth/verify-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", cookie: studentCookie },
+    body: JSON.stringify({ code: "000000" }),
+  })
+  const verifyAttemptBody = await json(verifyAttempt)
+  record(
+    "verify-email error does not expose OTP",
+    !leakedOtp(verifyAttemptBody) && !("otp" in verifyAttemptBody) && !("code" in verifyAttemptBody) && !("demoOtp" in verifyAttemptBody),
+  )
 
   const unverifiedDash = await req("/dashboard", { headers: { cookie: studentCookie } })
   const unverifiedDashLoc = unverifiedDash.headers.get("location") || ""
